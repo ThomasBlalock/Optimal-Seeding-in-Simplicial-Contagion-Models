@@ -25,25 +25,24 @@ class RSCGenerator:
         self._generate_1_simplices()
         self._generate_2_simplices()
         return self.links, self.triangles
-        
+    
     def _generate_1_simplices(self):
         """edge sampling from binomial"""
         print(f"Sampling edges with p_1 = {self.p_1:.8f}")
         num_edges = np.random.binomial(math.comb(self.N, 2), self.p_1)
-        added_edges = set()
+        self.added_edges = set()
         
-        # Rejection sampling
         node_list = range(self.N)
-        while len(added_edges) < num_edges:
+        while len(self.added_edges) < num_edges:
             i, j = random.sample(node_list, 2)
             edge = (i, j) if i < j else (j, i)
             
-            if edge not in added_edges:
-                added_edges.add(edge)
+            if edge not in self.added_edges:
+                self.added_edges.add(edge)
                 self.links[i].append(j)
                 self.links[j].append(i)
             
-            print(f"\rEdges sampled: {len(added_edges)}/{num_edges}", end="")
+            print(f"\rEdges sampled: {len(self.added_edges)}/{num_edges}", end="")
         print()
 
     def _generate_2_simplices(self):
@@ -52,7 +51,6 @@ class RSCGenerator:
         num_triangles = np.random.binomial(math.comb(self.N, 3), self.p_delta)
         added_triangles = set()
         
-        # Rejection sampling
         node_list = range(self.N)
         while len(added_triangles) < num_triangles:
             nodes = tuple(sorted(random.sample(node_list, 3)))
@@ -62,10 +60,16 @@ class RSCGenerator:
                 self.triangles[i].append((j, k))
                 self.triangles[j].append((i, k))
                 self.triangles[k].append((i, j))
+                
+                for edge in [(i, j), (j, k), (i, k)]:
+                    if edge not in self.added_edges:
+                        self.added_edges.add(edge)
+                        self.links[edge[0]].append(edge[1])
+                        self.links[edge[1]].append(edge[0])
             
             print(f"\rTriangles sampled: {len(added_triangles)}/{num_triangles}", end="")
         print()
-
+        
 
 class RandomSeeding:
     def __init__(self, N, rho_0):
