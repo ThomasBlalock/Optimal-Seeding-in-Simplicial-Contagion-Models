@@ -111,21 +111,18 @@ class SCMSimulator:
         """Executes the simulation for t_max timesteps."""
         for t in range(t_max):
             self._step()
-            if self.stable_state(): # Absorbing or steady state reached
-                # Pad for output len consistency & break early
-                self.rho_history.extend([
-                    self.rho_history[-1]
-                ] * (t_max - t - 1))
+            if self.rho_history[-1] == 0.0:
+                self.rho_history.extend([0.0] * (t_max - t - 1))
                 break
                 
         return self.rho_history
 
-    def stable_state(self):
-        if self.rho_history[-1] == 0.0:
-            return True
-        if len(self.rho_history) > 100 and np.isclose(self.rho_history[-1], self.rho_history[-100], atol=1e-5):
-            return True
-        return False
+    # def stable_state(self):
+    #     if self.rho_history[-1] == 0.0:
+    #         return True
+    #     if len(self.rho_history) > 100 and np.isclose(self.rho_history[-1], self.rho_history[-100], atol=1e-5):
+    #         return True
+    #     return False
         
 
     def _step(self):
