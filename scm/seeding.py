@@ -1,4 +1,5 @@
 import random
+import numpy as np
 from abc import ABC, abstractmethod
 
 
@@ -27,3 +28,19 @@ class RandomSeeding(SeedingStrategy):
 
     def seed(self) -> list[int]:
         return random.sample(range(self.N), self.num_seeds)
+
+
+class HighDegreeSeeding(SeedingStrategy):
+    """Seeds the nodes with the highest edge degree (most 1-simplex neighbors)."""
+
+    def seed(self) -> list[int]:
+        degrees = np.array([len(self.links[i]) for i in range(self.N)])
+        return np.argsort(degrees)[-self.num_seeds:][::-1].tolist()
+
+
+class HighSimplexSeeding(SeedingStrategy):
+    """Seeds the nodes with the highest 2-simplex participation count."""
+
+    def seed(self) -> list[int]:
+        triangle_counts = np.array([len(self.triangles[i]) for i in range(self.N)])
+        return np.argsort(triangle_counts)[-self.num_seeds:][::-1].tolist()
