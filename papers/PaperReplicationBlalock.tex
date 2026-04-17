@@ -1,0 +1,156 @@
+\documentclass[aspectratio=169]{beamer}
+\usetheme{Madrid} % Clean, professional theme
+\usecolortheme{default}
+
+\usepackage{graphicx}
+\usepackage{amsmath}
+
+% Title Slide Information
+\title[Optimal Seeding in SCMs]{Simplicial Models of Complex Contagion (Iacopini 2019)}
+\author{Thomas Blalock}
+\date{April 2, 2026}
+
+
+\begin{document}
+
+
+% Slide 1
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% Slide 2
+\begin{frame}{Motivation: From Theory to Application}
+    \begin{itemize}
+        \item \textbf{Real-World Application:} Developing a smart notification algorithm for the social app Sidequest to maximize new event attendance.
+        \item \textbf{The Core Problem:} How do we optimally select initial "seed" users to trigger a widespread cascade of engagement?
+        \item \textbf{The Value of this Replication:}
+        \begin{itemize}
+            \item Simple contagion wrongly assumes that group interactions behave equivalently to combined individual interactions.
+            \item Iacopini et al. provides the foundational mathematical framework for modeling these group-level influence thresholds.
+        \end{itemize}
+        \item \textbf{Ultimate Goal:} Understand simplicial contagion and optimize virality over it.
+    \end{itemize}
+\end{frame}
+
+% Slide 2
+\begin{frame}{The Simplicial Contagion Model (SCM)}
+    \begin{itemize}
+        \item \textbf{Simplex Definition:} A $k$-simplex $\sigma$ is a set of $k+1$ interacting vertices.
+        \begin{itemize}
+            \item 0-simplex: A single node.
+            \item 1-simplex: A pair of nodes (standard edge).
+            \item 2-simplex: A group of three nodes (triangle/hyperedge).
+        \end{itemize}
+        \item \textbf{Epidemic Model:} An extension of the Susceptible-Infected-Susceptible (SIS) model.
+        \item \textbf{Simplicial Contagion:} Contagion rates depend on interaction dimensionality. 
+        \begin{itemize}
+            \item Pairwise infection rate: $\beta$
+            \item 2-simplex (group) infection rate: $\beta_{\Delta}$
+        \end{itemize}
+    \end{itemize}
+    \vspace{0.3cm}
+    \centering
+    % Ensure you have the original paper's figure 1 saved as 'original_fig1.png'
+    \includegraphics[height=3.5cm]{original_fig1.png} 
+\end{frame}
+
+% Slide 3
+\begin{frame}{Experimental Setup}
+    \begin{itemize}
+        \item \textbf{Graph Structure:} Simulations run on Erdős-Rényi-style Random Simplicial Complexes (RSCs).
+        \item \textbf{Rescaled Infectivities:}
+        $$ \lambda = \frac{\beta \langle k \rangle}{\mu} \quad \text{and} \quad \lambda_{\Delta} = \frac{\beta_{\Delta} \langle k_{\Delta} \rangle}{\mu} $$
+        \item \textbf{Mean-Field Approach (Homogeneous Mixing):}
+        \item Theoretical Final Node Density ($\rho^*$):
+        $$ \rho^* = \frac{(\lambda_{\Delta} - \lambda) + \sqrt{(\lambda - \lambda_{\Delta})^2 - 4\lambda_{\Delta}(1-\lambda)}}{2\lambda_{\Delta}} $$
+        \item Initial Node Density Threshold ($\rho_c$):
+        $$ \rho_c = \frac{(\lambda_{\Delta} - \lambda) - \sqrt{(\lambda - \lambda_{\Delta})^2 - 4\lambda_{\Delta}(1-\lambda)}}{2\lambda_{\Delta}} $$
+    \end{itemize}
+\end{frame}
+
+% Slide 4
+\begin{frame}{Original Results \& Criteria for Success}
+    \begin{columns}
+        \column{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{fig1a.png} \\
+        {\footnotesize Fig 3a: Original Phase Transition}
+        
+        \column{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{fig1b.png} \\
+        {\footnotesize Fig 3b: Original Bistable Temporal Evolution}
+    \end{columns}
+    \vspace{0.4cm}
+    \textbf{Criteria for Success:}
+    \begin{itemize}
+        \item Replicate the discontinuous phase transition.
+        \item Validate the emergence of the bistable hysteresis loop.
+    \end{itemize}
+\end{frame}
+
+% Slide 5
+\begin{frame}{Replication Results}
+    \begin{columns}
+        \column{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{fig2a.png} \\
+        {\footnotesize Replicated Phase Transition ($N=2000$)}
+        
+        \column{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{fig2b.png} \\
+        {\footnotesize Replicated Bistable Region ($N=2000$)}
+    \end{columns}
+    \vspace{0.4cm}
+    \begin{itemize}
+        \item The simulations successfully reproduce the general discontinuous transition and bistability.
+        \item \textbf{Observation:} Results do not perfectly abide by the theoretical initial density threshold (outlier converged to endemic state below the line).
+    \end{itemize}
+\end{frame}
+
+% Slide 6
+\begin{frame}{Precision Error from Homogeneous Mixing Assumption}
+    \begin{columns}
+        \column{0.4\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{fig3.png} \\
+        {\footnotesize Noise Reduction ($N=8000$)}
+        
+        \column{0.6\textwidth}
+        \begin{itemize}
+            \item \textbf{Testing the Anomaly:} Increased RSC size from $N=2000$ to $N=8000$.
+            \item \textbf{Ruling out noise:} If the $N=2000$ anomaly was finite-size stochastic noise, increasing the scale should force the simulations to adhere perfectly to the theoretical threshold.
+            \item \textbf{Conclusion:} They still converged to the endemic state below the theoretical line. 
+            \item The theoretical threshold overestimates the true threshold because the \textit{homogeneous mixing assumption} breaks down. Local structural fluctuations in the quenched network act as denser ignition points for complex contagion.
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+% Slide 7
+\begin{frame}{Future Work}
+    \begin{itemize}
+        \item \textbf{Realistic Network Topologies:} Test the Simplicial Contagion Model on networks exhibiting standard social network properties.
+        \begin{itemize}
+            \item Power-law/Exponential degree distributions.
+            \item Dense community structures.
+        \end{itemize}
+        \item \textbf{Algorithmic Application:} Optimize the deliberate seeding of infected nodes.
+        \begin{itemize}
+            \item \textit{Hypothesis:} Strategic random seeding within targeted communities biased by node degree will significantly lower the initial infection density threshold required to trigger a cascade.
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+% Slide 8
+\begin{frame}{References}
+    \begin{thebibliography}{9}
+        \bibitem{iacopini2019} 
+        Iacopini, I., Petri, G., Barrat, A., \& Latora, V. (2019). 
+        \newblock Simplicial models of social contagion. 
+        \newblock \textit{Nature communications}, 10(1), 2485.
+    \end{thebibliography}
+\end{frame}
+
+\end{document}
