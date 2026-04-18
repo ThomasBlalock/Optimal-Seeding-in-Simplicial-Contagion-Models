@@ -1,12 +1,10 @@
 # Optimizing Seeding in Competitive Independent Capacity-Constrained Cascades
 
-## Intro
-
-### Competitive Independent Capacity-Constrained Cascades (CIC3)
+## Competitive Independent Capacity-Constrained Cascades (CIC3)
 
 Many diffusion processes are only valuable up to a hard quota. For instance, social activities that leverage social contagion to recruit participants might only require a certain number of attendees before each subsequent attendee provides no value to the system or detracts value. A full social volleyball game only requires 12 people; adding more people to the game would detract from the net experience by causing some people to watch from the sidelines for periods of time. We refer to these types of contagions as **capacity-constrained cascades (C3s)**. Sometimes, many C3s are introduced simultaneously competing for attention with the goal of each one meeting its quota. We call this system **competitive independent capacity-constrained cascades (CIC3)**. Expanding on the previous example, if there were multiple social events occurring at the same time, then each event would be competing for attendees in the CIC3 process.
 
-### Evaluating CIC3 Processes
+## Global CIC3 Evaluation - Deriving Time-Discounted Global Attainment
 
 When evaluating CIC3 processes, we want to capture a few aspects of the system. The first is global attainment: we want to know how much of each contagion's quota was filled. The following definition matches this goal by only including infected nodes towards the numerator up to a given contagion's quota. 
 
@@ -34,7 +32,7 @@ $$A_i^{\text{td}} = \frac{K_i^{\text{td}}}{Q_i} \in [0,1]$$
 
 $$A_g^{\text{td}} = \frac{1}{|\mathcal{C}|} \sum_{C_i \in \mathcal{C}} A_i^{\text{td}} \in [0,1]$$
 
-### Comparison with Prior Metrics
+## Comparison with Prior Metrics
 
 Prior metrics for network contagion do not capture both a hard quota and a time-discounted value under that quota.
 
@@ -45,4 +43,3 @@ Prior metrics for network contagion do not capture both a hard quota and a time-
 | **Expected spread $\sigma(S)$** | Expected activated nodes from seed set $S$ | Objective increases with every additional adoption past $Q_i$; does not enforce $\min(|I_i^{\text{raw}}|, Q_i)$. |
 | **Structural virality** | Average distance in diffusion tree | Describes shape of spread, not whether $Q_i$ was met or how early infections occurred. |
 | **Time to $k$ infections** | Speed to reach a fixed count $k$ | Measures latency but does not cap value at $Q_i$ and does not apply a graded $V(t)$ to all infections within the quota. |
-
