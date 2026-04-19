@@ -1,6 +1,10 @@
-import numpy as np
-import random
+import gzip
 import math
+import os
+import random
+import urllib.request
+
+import numpy as np
 
 
 def _ensure_edge(links, added_edges, i, j):
@@ -378,3 +382,165 @@ class SBMGenerator:
         if not (na and nb and nc):
             return None
         return (random.choice(na), random.choice(nb), random.choice(nc))
+
+
+class TwitterEgoGenerator:
+    """Loads the SNAP ego-Twitter combined edge list and promotes a random
+    subset of its triangles to 2-simplices.
+
+    Downloads ``twitter_combined.txt.gz`` from SNAP on first use and caches
+    the raw archive under ``data_dir``. Node IDs are relabeled to 0..N-1
+    contiguous integers; N is determined by the data (not a constructor
+    arg).
+
+    ``edge_mode`` controls directed -> undirected conversion:
+    - ``"collapse"``: any directed edge u->v or v->u yields an undirected
+      edge {u, v}.
+    - ``"mutual"``: {u, v} is kept only if both u->v and v->u are present
+      in the SNAP data.
+
+    After ``links`` is built, every triangle in the resulting undirected
+    graph is enumerated and independently promoted to a 2-simplex with
+    probability ``p_promote``. Non-promoted triangles remain present as
+    the three underlying edges only (no entry in ``triangles``).
+    """
+
+    DEFAULT_URL = "https://snap.stanford.edu/data/twitter_combined.txt.gz"
+    DEFAULT_FILENAME = "twitter_combined.txt.gz"
+
+    def __init__(self, p_promote, edge_mode="collapse",
+                 data_dir="data", url=None, filename=None):
+        if not 0.0 <= p_promote <= 1.0:
+            raise ValueError("p_promote must be in [0, 1]")
+        if edge_mode not in ("collapse", "mutual"):
+            raise ValueError("edge_mode must be 'collapse' or 'mutual'")
+        self.p_promote = p_promote
+        self.edge_mode = edge_mode
+        self.data_dir = data_dir
+        self.url = url or self.DEFAULT_URL
+        self.filename = filename or self.DEFAULT_FILENAME
+
+        self.N = None
+        self.links = None
+        self.triangles = None
+        self.added_edges = None
+        self.added_triangles = None
+        self.k_avg = None
+        self.k_delta_avg = None
+
+    def generate(self, seed=None):
+        if seed is not None:
+            random.seed(seed)
+            np.random.seed(seed)
+
+        path = self._fetch_cached()
+        edges = self._parse_edges(path)
+        self._build_links(edges)
+        self._enumerate_and_promote()
+
+        self.k_avg, self.k_delta_avg = _realized_degrees(
+            self.N, self.links, self.triangles
+        )
+        print(
+            f"Realized k_avg = {self.k_avg:.2f}, "
+            f"k_delta_avg = {self.k_delta_avg:.2f}"
+        )
+        return self.links, self.triangles
+
+    def _fetch_cached(self):
+        os.makedirs(self.data_dir, exist_ok=True)
+        path = os.path.join(self.data_dir, self.filename)
+        if os.path.exists(path):
+            print(f"Using cached Twitter edge list at {path}")
+        else:
+            print(f"Downloading {self.url} -> {path}")
+            urllib.request.urlretrieve(self.url, path)
+        return path
+
+    def _parse_edges(self, path):
+        print(f"Parsing {path} (edge_mode={self.edge_mode})")
+        node_ids = {}
+
+        def intern(raw):
+            idx = node_ids.get(raw)
+            if idx is None:
+                idx = len(node_ids)
+                node_ids[raw] = idx
+            return idx
+
+        if self.edge_mode == "collapse":
+            edges = set()
+            with gzip.open(path, "rt") as f:
+                for line in f:
+                    parts = line.split()
+                    if len(parts) < 2:
+                        continue
+                    u = intern(parts[0])
+                    v = intern(parts[1])
+                    if u == v:
+                        continue
+                    edges.add((u, v) if u < v else (v, u))
+        else:
+            seen = {}
+            with gzip.open(path, "rt") as f:
+                for line in f:
+                    parts = line.split()
+                    if len(parts) < 2:
+                        continue
+                    u = intern(parts[0])
+                    v = intern(parts[1])
+                    if u == v:
+                        continue
+                    if u < v:
+                        key, bit = (u, v), 1
+                    else:
+                        key, bit = (v, u), 2
+                    seen[key] = seen.get(key, 0) | bit
+            edges = {e for e, mask in seen.items() if mask == 3}
+
+        self.N = len(node_ids)
+        print(
+            f"Parsed {self.N} nodes, {len(edges)} undirected edges "
+            f"(edge_mode={self.edge_mode})"
+        )
+        return edges
+
+    def _build_links(self, edges):
+        self.links = [[] for _ in range(self.N)]
+        self.triangles = [[] for _ in range(self.N)]
+        self.added_edges = set()
+        self.added_triangles = set()
+        for a, b in edges:
+            _ensure_edge(self.links, self.added_edges, a, b)
+
+    def _enumerate_and_promote(self):
+        print(f"Enumerating triangles (p_promote={self.p_promote})")
+        neighbors = [set(lst) for lst in self.links]
+        edges_snapshot = list(self.added_edges)
+        found = 0
+        promoted = 0
+        for u, v in edges_snapshot:
+            nu, nv = neighbors[u], neighbors[v]
+            if len(nu) <= len(nv):
+                small, large = nu, nv
+            else:
+                small, large = nv, nu
+            for w in small:
+                if w > v and w in large:
+                    found += 1
+                    if random.random() < self.p_promote:
+                        if _add_triangle(
+                            self.triangles, self.added_triangles,
+                            self.links, self.added_edges, u, v, w,
+                        ):
+                            promoted += 1
+                    if found % 200000 == 0:
+                        print(
+                            f"\rTriangles found: {found}  "
+                            f"promoted: {promoted}",
+                            end="",
+                        )
+        print(
+            f"\rTriangles found: {found}  promoted: {promoted}"
+            + " " * 20
+        )

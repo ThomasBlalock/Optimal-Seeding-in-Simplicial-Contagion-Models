@@ -1,4 +1,6 @@
-from .generators import RSCGenerator, BAGenerator, SBMGenerator
+from .generators import (
+    RSCGenerator, BAGenerator, SBMGenerator, TwitterEgoGenerator,
+)
 from .seeding import (
     SeedingStrategy, RandomSeeding, HighDegreeSeeding, HighSimplexSeeding,
     MultiContagionSeedingStrategy, MultiRandomSeeding,
