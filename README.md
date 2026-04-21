@@ -95,4 +95,4 @@ With this, make a heatmap with inter community conenction on the y axis and intr
 
 Update: The experiments did not show the expected pattern with random beating our high degree. Maybe we need to test a topology with a power law degree distribution and community structure?
 
-Update: We tried the tests on a popularity-similarity topology with community structure and it did nothing.
+Update: We tried the tests on a popularity-similarity topology with community structure and we were still unable to replicate the anomoly noticed on the twitter mutual network.
