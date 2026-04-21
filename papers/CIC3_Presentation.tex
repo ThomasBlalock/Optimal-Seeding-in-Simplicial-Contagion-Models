@@ -1,0 +1,270 @@
+\documentclass{beamer}
+\usetheme{Madrid}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{multirow}
+\usepackage{subcaption}
+
+\title{CIC3: Optimizing Seeding in Competitive Independent Capacity-Constrained Cascades}
+\subtitle{Simplicial Contagion Models for Strategic Seeding}
+\author{Thomas Blalock \\ UVA Network Science}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+\section*{Overview}
+\begin{frame}
+\frametitle{Overview}
+\begin{center}
+\includegraphics[width=0.8\textwidth]{figures/network_stats.png}
+\end{center}
+\begin{itemize}
+    \item Research on simplicial contagion models (SCM) with group interactions
+    \item Focus: Competitive Independent Capacity-Constrained Cascades (CIC3)
+    \item Goal: Optimize seed node placement across competing contagions
+\end{itemize}
+\end{frame}
+
+\section{Introduction to CIC3}
+\begin{frame}
+\frametitle{Motivation: Capacity-Constrained Cascades}
+\begin{center}
+\includegraphics[width=0.9\textwidth]{figures/capacity_constraints.png}
+\end{center}
+\begin{itemize}
+    \item Many social processes have hard quotas (e.g., volleyball needs exactly 12 players)
+    \item Value plateaus after quota is met; additional participants may even detract
+    \item \textbf{C3}: A single capacity-constrained contagion
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{CIC3: Multiple Competing Cascades}
+\begin{center}
+\includegraphics[width=0.9\textwidth]{figures/cic3_competition.png}
+\end{center}
+\begin{itemize}
+    \item Multiple C3s compete simultaneously for the same pool of attendees
+    \item Each contagion has its own quota $Q_i$
+    \item Example: Multiple social events happening at the same time
+    \item \textbf{Objective}: Maximize global attainment across all contagions
+\end{itemize}
+\end{frame}
+
+\section{Evaluation Metrics}
+\begin{frame}
+\frametitle{Evaluation Metrics}
+\begin{center}
+\includegraphics[width=0.9\textwidth]{figures/metrics_diagram.png}
+\end{center}
+\begin{itemize}
+    \item Need metrics that capture both hard quotas AND time discounting
+    \item Prior metrics fail: final epidemic size, $R_0$, expected spread, structural virality
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Global Attainment Definitions}
+\begin{block}{Per-Contagion Attainment}
+Let $I_i^{raw}$ be nodes infected by contagion $C_i$, $Q_i$ its quota.
+$$K_i = \min(|I_i^{raw}|, Q_i)$$
+$$A_i = \frac{K_i}{Q_i} \in [0,1]$$
+\end{block}
+
+\begin{block}{Global Attainment}
+$$A_g = \frac{1}{|\mathcal{C}|} \sum_{C_i \in \mathcal{C}} A_i \in [0,1]$$
+\end{block}
+
+\begin{block}{Time-Discounted Attainment}
+With value function $V(t) \in [0,1]$:
+$$K_i^{td} = \min\left(\sum_{k=1}^{\min(Q_i,|I_i^{raw}|)} V(t_{i,(k)}), Q_i\right)$$
+$$A_i^{td} = \frac{K_i^{td}}{Q_i}, \quad A_g^{td} = \frac{1}{|\mathcal{C}|} \sum_{C_i \in \mathcal{C}} A_i^{td}$$
+\end{block}
+\end{frame}
+
+\section{Experimental Setup}
+\begin{frame}
+\frametitle{Network Topologies}
+\begin{center}
+\includegraphics[width=0.9\textwidth]{figures/topology_comparison.png}
+\end{center}
+\begin{itemize}
+    \item \textbf{RSC}: Random simplicial complex (Erdős–Rényi style)
+    \item \textbf{BA}: Barabási–Albert with simplicial extension
+    \item \textbf{SBM}: Stochastic block model with community structure
+    \item \textbf{SBM-Manual}: Tuned to stress clustering strategies (53 communities)
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{SBM-Manual Configuration}
+\begin{center}
+\includegraphics[width=0.9\textwidth]{figures/sbm_manual_config.png}
+\end{center}
+\begin{itemize}
+    \item $N = 500$, $K = 53$ communities
+    \item 52 small cliques ($p_{intra}=1.0$, $p_{inter}=0.003$)
+    \item 1 hub community (size 32, $p_{intra}=0.5$, $p_{inter}=0.15$)
+    \item Triangle probabilities: $[0.2]^{52} + [0.04]$
+    \item Realized: $\langle k \rangle \approx 19.05$, $\langle k_\Delta \rangle \approx 6.54$
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Seeding Strategies}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{Baseline Strategies}
+\begin{itemize}
+    \item \textbf{Random}: Uniform sampling
+    \item \textbf{High Degree}: Top-degree nodes (round-robin)
+    \item \textbf{High 2-Simplex}: Top triangle-participation nodes
+\end{itemize}
+\end{block}
+
+\column{0.5\textwidth}
+\begin{block}{Clustering Strategies}
+\begin{itemize}
+    \item \textbf{Louvain}: Community detection + internal seeding
+    \item \textbf{Farthest-First}: BFS-farthest centers, avoids hubs
+\end{itemize}
+\end{block}
+\end{columns}
+
+\begin{center}
+\includegraphics[width=0.8\textwidth]{figures/seeding_strategies.png}
+\end{center}
+\end{frame}
+
+\begin{frame}
+\frametitle{Simulation Parameters}
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Parameter & Value \\
+\midrule
+Number of contagions ($C$) & 50 \\
+Quota per contagion ($Q_i$) & $N/C = 10$ \\
+Time discount $V(t)$ & $e^{-0.05 t}$ \\
+Network size ($N$) & 500 \\
+Timesteps ($t_{max}$) & 2000 \\
+Trials per condition & 100 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{itemize}
+    \item Quotas sum to $N$ (no slack)
+    \item Exclusive states: each node infected by at most one contagion
+    \item SI dynamics: no recovery
+    \item Triangle reinforcement: same-contagion only
+\end{itemize}
+\end{frame}
+
+\section{Results}
+\begin{frame}
+\frametitle{CIC3 Strategy Comparison}
+\begin{center}
+\includegraphics[width=0.85\textwidth]{figures/cic3_strategy_comparison.png}
+\end{center}
+\begin{itemize}
+    \item High-degree strategy performs best overall
+    \item Clustering strategies underperform on most topologies
+    \item Random surprisingly effective on sparse networks
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Per-Contagion Distribution}
+\begin{center}
+\includegraphics[width=0.85\textwidth]{figures/cic3_per_contagion_distribution.png}
+\end{center}
+\begin{itemize}
+    \item Boxplots show distribution of individual contagion attainments
+    \item High-degree strategy achieves higher median and less variance
+    \item Clustering strategies show more outliers and lower medians
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Probability Density Functions}
+\begin{center}
+\includegraphics[width=0.85\textwidth]{figures/cic3_per_contagion_pdf.png}
+\end{center}
+\begin{itemize}
+    \item PDFs reveal shape features boxplots miss
+    \item Bimodality, long lower tails, saturation spikes at $A_i^{td}=1$
+    \item High-degree strategy shows concentration near 1.0 on dense networks
+\end{itemize}
+\end{frame}
+
+\section{Key Findings}
+\begin{frame}
+\frametitle{The Sparsity Anomaly}
+\begin{center}
+\includegraphics[width=0.85\textwidth]{figures/cic3_topology_statistics.png}
+\end{center}
+\begin{itemize}
+    \item Twitter mutual network is much sparser than other topologies
+    \item Random seeding performs best on this sparse network
+    \item High-degree seeding underperforms in sparse, community-structured networks
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Sparsity Experiment}
+\begin{center}
+\includegraphics[width=0.85\textwidth]{placeholder_sparsity.png}
+\end{center}
+\begin{itemize}
+    \item Varying inter-community and intra-community connection probabilities
+    \item Random works best only in high intra, low inter-community networks
+    \item High-degree optimal for dense networks with community structure
+\end{itemize}
+\end{frame}
+
+\section{Conclusions}
+\begin{frame}
+\frametitle{Conclusions}
+\begin{center}
+\includegraphics[width=0.85\textwidth]{figures/conclusions.png}
+\end{center}
+\begin{itemize}
+    \item Centrality-based seeding (degree, triangle) generally superior
+    \item Exception: sparse networks with strong community structure
+    \item Random seeding can outperform centrality-based methods in specific regimes
+    \item Community-based strategies need refinement for sparse regimes
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Future Work}
+\begin{center}
+\includegraphics[width=0.85\textwidth]{figures/future_work.png}
+\end{center}
+\begin{itemize}
+    \item Adaptive seeding strategies that detect network density
+    \item Hybrid approaches combining multiple seeding heuristics
+    \item Extension to weighted quotas and heterogeneous contagions
+    \item Real-world application to notification targeting in social apps
+\end{itemize}
+\end{frame}
+
+\section*{References}
+\begin{frame}
+\frametitle{References}
+\begin{itemize}
+    \item Iacopini, I., et al. (2019). Simplicial models of social contagion. \emph{Nature Communications}.
+    \item Blalock, D., et al. (2024). Optimal Seeding in Simplicial Contagion Models. \emph{arXiv preprint}.
+    \item NetworkX, NumPy, Matplotlib for simulations and visualization.
+\end{itemize}
+\end{frame}
+
+\end{document}

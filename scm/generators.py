@@ -544,3 +544,148 @@ class TwitterEgoGenerator:
             f"\rTriangles found: {found}  promoted: {promoted}"
             + " " * 20
         )
+
+
+class PSOCommunityGenerator:
+    """Popularity-Similarity Optimization with macro-community structure.
+
+    Nodes are placed on a circle of similarity coordinates using a
+    Gaussian mixture whose `C` components are spaced uniformly around
+    the circle at `phi_c = c * 2*pi/C`. Each arriving node picks a
+    community `c` (with probability `community_weights[c]`) and draws
+    its angular coordinate `theta_t ~ N(phi_c, sigma^2) mod 2*pi`.
+    Radial coordinates are set by birth-time popularity fading, closed
+    form: `r_s(t) = beta * ln(s+1) + (1 - beta) * ln(t+1)`, giving a
+    power-law degree distribution with exponent `gamma = 1 + 1/beta`.
+
+    Edges are formed with the deterministic T=0 rule: node `t` connects
+    to the `m` existing nodes with smallest hyperbolic distance
+    `x_{st} = r_s(t) + r_t + ln(theta_{st}/2)`, where `theta_{st}` is
+    the shortest arc between `theta_s` and `theta_t`. Nodes `t <= m`
+    connect to all predecessors.
+
+    Triangles are generated natively: for each new node `t`, draw
+    `n_tri ~ Poisson(m_delta)` and, for each, uniformly sample two of
+    `t`'s just-attached neighbors to form the 2-simplex `(t, i, j)`.
+    Triangle sampling from the `m` closest predecessors is similarity-
+    biased by construction, so triangles concentrate inside communities
+    without any extra weighting. Missing constituent edges are filled
+    via the RSC convention.
+
+    After `generate()`, `theta`, `community_labels` (ground truth), and
+    `phi` are exposed on the instance for downstream analysis.
+    """
+
+    _EPS = 1e-12
+
+    def __init__(self, N, m, beta, C, sigma, m_delta=0.0,
+                 community_weights=None):
+        if N < 2:
+            raise ValueError("N must be >= 2")
+        if m < 1:
+            raise ValueError("m must be >= 1")
+        if not 0 < beta <= 1:
+            raise ValueError("beta must be in (0, 1]")
+        if C < 1:
+            raise ValueError("C must be >= 1")
+        if sigma < 0:
+            raise ValueError("sigma must be >= 0")
+        if m_delta < 0:
+            raise ValueError("m_delta must be >= 0")
+
+        self.N = N
+        self.m = m
+        self.beta = beta
+        self.C = C
+        self.sigma = sigma
+        self.m_delta = m_delta
+
+        if community_weights is None:
+            self.community_weights = np.full(C, 1.0 / C)
+        else:
+            w = np.asarray(community_weights, dtype=float)
+            if w.shape != (C,):
+                raise ValueError(
+                    f"community_weights must have length {C}"
+                )
+            if np.any(w < 0):
+                raise ValueError("community_weights must be non-negative")
+            s = w.sum()
+            if s <= 0:
+                raise ValueError("community_weights must sum to > 0")
+            self.community_weights = w / s
+
+        self.phi = np.arange(C) * (2.0 * math.pi / C)
+
+        self.links = [[] for _ in range(N)]
+        self.triangles = [[] for _ in range(N)]
+        self.added_edges = set()
+        self.added_triangles = set()
+        self.theta = np.zeros(N)
+        self.community_labels = np.zeros(N, dtype=int)
+
+    def generate(self, seed=None):
+        if seed is not None:
+            random.seed(seed)
+            np.random.seed(seed)
+
+        self.community_labels = np.random.choice(
+            self.C, size=self.N, p=self.community_weights,
+        )
+        noise = np.random.normal(0.0, self.sigma, size=self.N)
+        self.theta = (self.phi[self.community_labels] + noise) % (
+            2.0 * math.pi
+        )
+
+        tick = max(self.N // 100, 1)
+        for t in range(1, self.N):
+            neighbors_t = self._attach_edges(t)
+            self._attach_triangles(t, neighbors_t)
+            if (t + 1) % tick == 0:
+                print(f"\rPSO nodes added: {t + 1}/{self.N}", end="")
+        print(f"\rPSO nodes added: {self.N}/{self.N}")
+
+        self.k_avg, self.k_delta_avg = _realized_degrees(
+            self.N, self.links, self.triangles
+        )
+        print(
+            f"Realized k_avg = {self.k_avg:.2f}, "
+            f"k_delta_avg = {self.k_delta_avg:.2f}"
+        )
+        return self.links, self.triangles
+
+    def _attach_edges(self, t):
+        """Attach node t to its m closest predecessors (or all, if t<=m).
+
+        Returns the list of neighbor ids for triangle sampling.
+        """
+        if t <= self.m:
+            neighbors = list(range(t))
+        else:
+            s_ids = np.arange(t)
+            r_t = math.log(t + 1)
+            r_s = (
+                self.beta * np.log(s_ids + 1)
+                + (1.0 - self.beta) * r_t
+            )
+            dtheta = np.abs(self.theta[:t] - self.theta[t])
+            theta_st = math.pi - np.abs(math.pi - dtheta)
+            np.maximum(theta_st, self._EPS, out=theta_st)
+            x_st = r_s + r_t + np.log(theta_st / 2.0)
+            idx = np.argpartition(x_st, self.m - 1)[: self.m]
+            neighbors = idx.tolist()
+
+        for s in neighbors:
+            _ensure_edge(self.links, self.added_edges, t, s)
+        return neighbors
+
+    def _attach_triangles(self, t, neighbors_t):
+        if self.m_delta <= 0 or len(neighbors_t) < 2:
+            return
+        n_tri = np.random.poisson(self.m_delta)
+        for _ in range(n_tri):
+            i, j = random.sample(neighbors_t, 2)
+            _add_triangle(
+                self.triangles, self.added_triangles,
+                self.links, self.added_edges, t, i, j,
+            )
