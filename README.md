@@ -96,3 +96,5 @@ With this, make a heatmap with inter community conenction on the y axis and intr
 Update: The experiments did not show the expected pattern with random beating our high degree. Maybe we need to test a topology with a power law degree distribution and community structure?
 
 Update: We tried the tests on a popularity-similarity topology with community structure and we were still unable to replicate the anomoly noticed on the twitter mutual network.
+
+Update: We tried doing it on a network with super super sparse connections between communities and it worked finally, showing random to work better. The explination is obvious: using high-degree seeding makes certain parts of the network unreachable because they're disconnected or maybe blocked by a different contagion over a bridge.
