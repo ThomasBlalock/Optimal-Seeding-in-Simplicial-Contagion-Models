@@ -75,10 +75,10 @@ $$A_g^{\text{td}} = \frac{1}{|\mathcal{C}|} \sum_{C_i \in \mathcal{C}} A_i^{\tex
 **Intuition:** In a capacity-constrained system where nodes can only be infected by a single contagion, any node consumed by a contagion that has already met its quota represents wasted capacity. Deadweight loss quantifies this multi-order competitive interference, highlighting how dense local spreading starves competing contagions.
 
 **Per-Contagion Deadweight Loss:**
-$$W_i = \max(0, |I_i^{\text{raw}}| - Q_i)$$
+$$D_i = \max(0, |I_i^{\text{raw}}| - Q_i)$$
 
 **Global Deadweight Loss:**
-$$W_g = \sum_{C_i \in \mathcal{C}} W_i$$
+$$D_g = \sum_{C_i \in \mathcal{C}} D_i$$
 
 ### 3. Mean Topological Penetration
 
@@ -87,10 +87,10 @@ $$W_g = \sum_{C_i \in \mathcal{C}} W_i$$
 Let $S_i$ be the set of initial seed nodes for contagion $C_i$, and $d_G(u, v)$ be the shortest path distance in the base graph $G$.
 
 **Per-Contagion Mean Penetration Depth:**
-$$D_i = \frac{1}{|I_i^{\text{raw}}|} \sum_{v \in I_i^{\text{raw}}} \min_{s \in S_i} d_G(s, v)$$
+$$P_i = \frac{1}{|I_i^{\text{raw}}|} \sum_{v \in I_i^{\text{raw}}} \min_{s \in S_i} d_G(s, v)$$
 
 **Global Mean Penetration:**
-$$D_g = \frac{1}{|\mathcal{C}|} \sum_{C_i \in \mathcal{C}} D_i$$
+$$P_g = \frac{1}{|\mathcal{C}|} \sum_{C_i \in \mathcal{C}} P_i$$
 
 ## Comparison with Prior Metrics
 
