@@ -42,6 +42,56 @@ $$A_i^{\text{td}} = \frac{K_i^{\text{td}}}{Q_i} \in [0,1]$$
 
 $$A_g^{\text{td}} = \frac{1}{|\mathcal{C}|} \sum_{C_i \in \mathcal{C}} A_i^{\text{td}} \in [0,1]$$
 
+## CIC3 Evaluation Metrics
+
+To capture the dynamics of Competitive Independent Capacity-Constrained Cascades (CIC3), we define metrics across three dimensions: quota attainment, deadweight loss (over-exploitation), and topological penetration (exploration).
+
+Let $\mathcal{C}$ be the set of contagions, where $C_i \in \mathcal{C}$ denotes contagion $i$. 
+Let $I_i^{\text{raw}}$ be the set of nodes infected by $C_i$. 
+Let $t(v)$ denote the infection timestep of node $v \in I_i^{\text{raw}}$. 
+Let $Q_i$ be the hard quota for contagion $C_i$.
+
+### 1. Global and Time-Discounted Attainment
+
+**Intuition:** Many diffusion processes yield zero marginal value past a specific quota. Attainment measures the fraction of this quota that was successfully filled. Time-discounted attainment penalizes latency, reflecting that early infections are more valuable to the system than late ones.
+
+**Capped Infection Count:**
+$$K_i = \min(|I_i^{\text{raw}}|, Q_i)$$
+
+**Time-Discounted Capped Count:**
+Assuming a decay function $V(t) \in [0,1]$ and sorted infection times $t_{i,(1)} \le \dots \le t_{i,(|I_i^{\text{raw}}|)}$:
+$$K_i^{\text{td}} = \min \left( \sum_{k=1}^{\min(Q_i, |I_i^{\text{raw}}|)} V(t_{i,(k)}), Q_i \right)$$
+
+**Per-Contagion and Global Attainment:**
+$$A_i = \frac{K_i}{Q_i} \in [0, 1]$$
+$$A_g = \frac{1}{|\mathcal{C}|} \sum_{C_i \in \mathcal{C}} A_i \in [0, 1]$$
+
+**Time-Discounted Per-Contagion and Global Attainment:**
+$$A_i^{\text{td}} = \frac{K_i^{\text{td}}}{Q_i} \in [0, 1]$$
+$$A_g^{\text{td}} = \frac{1}{|\mathcal{C}|} \sum_{C_i \in \mathcal{C}} A_i^{\text{td}} \in [0, 1]$$
+
+### 2. Deadweight Loss
+
+**Intuition:** In a capacity-constrained system where nodes can only be infected by a single contagion, any node consumed by a contagion that has already met its quota represents wasted capacity. Deadweight loss quantifies this multi-order competitive interference, highlighting how dense local spreading starves competing contagions.
+
+**Per-Contagion Deadweight Loss:**
+$$W_i = \max(0, |I_i^{\text{raw}}| - Q_i)$$
+
+**Global Deadweight Loss:**
+$$W_g = \sum_{C_i \in \mathcal{C}} W_i$$
+
+### 3. Mean Topological Penetration
+
+**Intuition:** To differentiate between local trapping (exploitation) and network-wide spread (exploration), penetration measures the average structural distance a contagion travels from its origin. Lower values indicate the cascade was trapped in its local neighborhood, while higher values indicate successful navigation across bridges to distinct network regions.
+
+Let $S_i$ be the set of initial seed nodes for contagion $C_i$, and $d_G(u, v)$ be the shortest path distance in the base graph $G$.
+
+**Per-Contagion Mean Penetration Depth:**
+$$D_i = \frac{1}{|I_i^{\text{raw}}|} \sum_{v \in I_i^{\text{raw}}} \min_{s \in S_i} d_G(s, v)$$
+
+**Global Mean Penetration:**
+$$D_g = \frac{1}{|\mathcal{C}|} \sum_{C_i \in \mathcal{C}} D_i$$
+
 ## Comparison with Prior Metrics
 
 Prior metrics for network contagion do not capture both a hard quota and a time-discounted value under that quota.
