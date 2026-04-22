@@ -1,6 +1,6 @@
 from .generators import (
     RSCGenerator, BAGenerator, SBMGenerator, TwitterEgoGenerator,
-    PSOCommunityGenerator,
+    PSOCommunityGenerator, RewiredBAGenerator,
 )
 from .seeding import (
     SeedingStrategy, RandomSeeding, HighDegreeSeeding, HighSimplexSeeding,

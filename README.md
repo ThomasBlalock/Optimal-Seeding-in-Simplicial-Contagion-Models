@@ -133,9 +133,16 @@ b. top left: aggregated RSC lambda delta sweeps. top right: aggregated BA and SB
 12. Conclusions - Exploration is bad for business
 
 13. Find relationships between topology and attainment, dead weight, and penetration.
+14. Community Structure - 
+- Community Isolation Sweeps (Use the SBM with 10 equal communities and vary the probability of intra-community connections. Do this for 3 values of the probabiity for intercommunity connection. In each simulation, measure the attainment, time discounted attainment, deadweight, and penetration. For each metric, make 2 graphs: one with each metric from the 3 different values of intercommunity probability each plotted as its own line and 1 where they are averaged. For attainment, make the graph have time discounted attainment and regular attainment as a line with less weight and shade between them like we do in cic3_attainment_sweep.ipynb.)
+15. Hub Prevalence
+- Hub Prevalence Sweeps (Now, lets test the correlation between hubbyness and our metrics. Make a new notebook for this. I want to use the BA generator for this. Make some wrapper for that class so we can vary between a power law degree distribution prevalence and random. The wrapper should use BA to make an initial graph. Then, given some parameter determining the proportion of edges to rewire, samples edges without replacement, detaches those edges from the nodes they are one, and connects 2 random nodes with it. Then, make a notebook that simulates these networks by sweeping the proportion of rewired edges from 0 to 1. Do this for 3 values of lambda. In each simulation, measure the attainment, time discounted attainment, deadweight, and penetration. For each metric, make 2 graphs: one with each metric from the 3 different values of lambda each plotted as its own line and 1 where they are averaged. For attainment, make the graph have time discounted attainment and regular attainment as a line with less weight and shade between them like we do in cic3_attainment_sweep.ipynb.)
+16. Conclusions - Community struture helps exploitation, power law degree distribution helps exploration
 
-
-, community struture helps exploitation, power law degree distribution helps exploration
+17. What are the best seeding strategies to use in which situations?
+- Attainment By Seeding X Topology for RSC, PA, SBC Communities, PSO Communities
+18. 
+- Hubbyness X Random + Twitter
 
 10. Seeding vs Topology - Twitter Outlier. Why?
 11. Hypothesis: core periphery topology with isolated parts of the node, design a SBM topology to test plausability

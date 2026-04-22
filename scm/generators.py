@@ -207,6 +207,100 @@ class BAGenerator:
             )
 
 
+class RewiredBAGenerator:
+    """Barabasi-Albert with edge rewiring to interpolate between
+    power-law and random degree distributions.
+
+    First generates a BA graph using BAGenerator, then rewires a
+    fraction of its 1-simplex edges. Rewiring detaches a sampled edge
+    from both endpoints and reconnects two uniformly random nodes,
+    preserving total edge count and connectivity (but not necessarily
+    graph connectivity).
+
+    Parameters
+    ----------
+    m : int
+        BA attachment parameter (edges per new node).
+    m_delta : int or float
+        BA triangle parameter (mean triangles per new node).
+    rewire_frac : float in [0, 1]
+        Fraction of edges to rewire. 0 = pure BA (power-law),
+        1 = maximally randomized degree distribution.
+    N : int
+        Number of nodes.
+    """
+
+    def __init__(self, m, m_delta, rewire_frac, N=2000):
+        if not 0.0 <= rewire_frac <= 1.0:
+            raise ValueError("rewire_frac must be in [0, 1]")
+        self.m = m
+        self.m_delta = m_delta
+        self.rewire_frac = rewire_frac
+        self.N = N
+
+        self.links = [[] for _ in range(N)]
+        self.triangles = [[] for _ in range(N)]
+        self.added_edges = set()
+        self.added_triangles = set()
+
+    def generate(self, seed=None):
+        if seed is not None:
+            random.seed(seed)
+            np.random.seed(seed)
+
+        # Step 1: generate a pure BA graph
+        ba = BAGenerator(m=self.m, m_delta=self.m_delta, N=self.N)
+        ba.generate(seed=None)  # RNG already seeded above
+
+        # Deep-copy BA structure so we don't mutate the original
+        self.links = [list(lst) for lst in ba.links]
+        self.triangles = [list(lst) for lst in ba.triangles]
+        self.added_edges = set(ba.added_edges)
+        self.added_triangles = set(ba.added_triangles)
+
+        # Step 2: rewire a fraction of edges
+        n_edges = len(self.added_edges)
+        n_rewire = int(round(self.rewire_frac * n_edges))
+
+        if n_rewire > 0:
+            self._rewire_edges(n_rewire)
+
+        self.k_avg, self.k_delta_avg = _realized_degrees(
+            self.N, self.links, self.triangles
+        )
+        print(
+            f"RewiredBA: rewire_frac={self.rewire_frac:.2f}, "
+            f"rewired {n_rewire}/{n_edges} edges, "
+            f"realized k_avg = {self.k_avg:.2f}, "
+            f"k_delta_avg = {self.k_delta_avg:.2f}"
+        )
+        return self.links, self.triangles
+
+    def _rewire_edges(self, n_rewire):
+        """Sample n_rewire edges without replacement, detach them,
+        then reconnect each as a new edge between two random nodes."""
+        edge_list = list(self.added_edges)
+        to_rewire = random.sample(edge_list, n_rewire)
+
+        for u, v in to_rewire:
+            # Detach: remove (u,v) from links and added_edges
+            self.added_edges.discard((u, v))
+            self.links[u].remove(v)
+            self.links[v].remove(u)
+
+        # Reconnect: for each removed edge, add a new random edge
+        for _ in range(n_rewire):
+            for _attempt in range(100):
+                a = random.randint(0, self.N - 1)
+                b = random.randint(0, self.N - 1)
+                if a == b:
+                    continue
+                edge = (a, b) if a < b else (b, a)
+                if edge not in self.added_edges:
+                    _ensure_edge(self.links, self.added_edges, a, b)
+                    break
+
+
 class SBMGenerator:
     """Stochastic Block Model with simplicial extension.
 
