@@ -85,6 +85,18 @@ Both clustering-based strategies discover community structure directly from the 
 
 ## Notes
 
+### Deadweight and Penetration
+
+Two additional CIC3 metrics complement attainment:
+
+- **Deadweight** D_i = max(0, |I_i^raw| - Q_i): nodes infected by C_i beyond its quota. These wasted infections represent contagion that overshot the capacity constraint. Global deadweight D_g = mean(D_i). Deadweight is only meaningful when the simulation runs past quota fulfillment (see termination below).
+
+- **Penetration** P_i: mean BFS hop distance from C_i's seed nodes to all nodes infected by C_i, computed over the induced subgraph of C_i-infected nodes. Nodes unreachable from any seed in the induced subgraph are excluded. Global penetration P_g = mean(P_i). Measures how deeply each contagion diffused into the network.
+
+### Simulation Termination
+
+By default (`stop_on_all_quotas_met=False`), the simulation runs until no susceptibles remain or `t_max`. Contagions continue spreading after meeting their quota, which makes deadweight a meaningful metric. Set `stop_on_all_quotas_met=True` for the legacy behavior (stop when all quotas are met).
+
 The high-degree seeding strategies tended to perform the best, except for over one topology: the twitter mutual network. Over that network, random seeindg performed the best. The community based seeding and furthest distance-based strategy did not work that well on any topology. These results were very odd, especially the random performing the best on the twitter mutual network. I statistically showed that the performance of random was statistically significantly better than the other strategies. Then, I examined various distributions in the graph topologies to try to find what made the twitter mutual network special. The primary difference between the twitter mutual network and the other topologies was that it was a lot sparser. It may be that degree-centrality seeding is the optimal strategy when the network is too dense for community structure to adequately contain contagion.
 
 Experiment idea. Maybe we take the SBM and define some variables to tweak:
@@ -98,3 +110,35 @@ Update: The experiments did not show the expected pattern with random beating ou
 Update: We tried the tests on a popularity-similarity topology with community structure and we were still unable to replicate the anomoly noticed on the twitter mutual network.
 
 Update: We tried doing it on a network with super super sparse connections between communities and it worked finally, showing random to work better. The explination is obvious: using high-degree seeding makes certain parts of the network unreachable because they're disconnected or maybe blocked by a different contagion over a bridge.
+
+## Presentation
+1. Intro Slide
+2. Replication Recap - Simplex Definition
+3. Replication Recap - Results
+
+4. Problem Statement - Competing Contagions with limit, Sidequest Activities
+5. Roadmap
+6. Attainment Formulation
+7. Dead Weight and Penetration Formulation
+
+8. Find relationships between infectivity and attainment, dead weight, and penetration. Craft narrative that explains those relationships
+9. Sweeping Infectivity vs Attainment Graphs - positive correlation with lambda, negative/flat with lambda delta
+a. top left: aggregated RSC lambda sweeps. top right: aggregated BA and SBM lambda sweeps. bottom: conclusion
+b. top left: aggregated RSC lambda delta sweeps. top right: aggregated BA and SBM lambda delta sweeps. bottom: conclusion
+10. Dead Weight - drives performance, generally less deadweight as we get more infective, mostly driven by lambda delta
+- top left D_g v A_g^td scatterplot. top right RSC deadweight/lam/lam_d heatmap. bottom is deadweight definition and conclusion
+11. Penetration - Greater infectivity means less penetration/exploration of each contagion
+11a. top left P_g v A_g^td scatterplot. top right RSC penetration/lam/lam_d heatmap. bottom is penetration definition and conclusion
+11b. Math showing how the variance in hop distance is more at lower infectivities
+12. Conclusions - Exploration is bad for business
+
+13. Find relationships between topology and attainment, dead weight, and penetration.
+
+
+, community struture helps exploitation, power law degree distribution helps exploration
+
+10. Seeding vs Topology - Twitter Outlier. Why?
+11. Hypothesis: core periphery topology with isolated parts of the node, design a SBM topology to test plausability
+12. Core Periphery Regime - P_CP v P_PI heatmaps & barcharts - When hubs dominate, seeding the hubs wins. When communities dominate, coverage wins.
+13. Core Periphery Animations
+14. Conclusions: simple edges are good for this task, simplex edges are bad for this task, targeting spreading each contagion inside a community does not work well because some contagion inevitably ends up usurping a lot of extra nodes, there are 2 regimes depending on the interactions between hubbyness and community isolation that determines if random seeding or centrality-based seeding is best.

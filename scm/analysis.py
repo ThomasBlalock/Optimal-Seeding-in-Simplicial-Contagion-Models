@@ -99,3 +99,87 @@ def no_decay():
     def V(t):
         return 1.0
     return V
+
+
+def deadweight(infected_by, quotas):
+    """CIC3 deadweight: nodes infected beyond the quota per contagion.
+
+    Deadweight for contagion c = max(0, |I_c| - Q_c) where |I_c| is the
+    raw count of nodes infected by c and Q_c is its quota.
+
+    Args:
+        infected_by: array of shape (N,) with values in {-1, 0..C-1}.
+        quotas: array-like of length C (positive ints).
+
+    Returns:
+        (D_i, D_g):
+            D_i: np.ndarray of shape (C,), per-contagion deadweight count
+            D_g: float, mean deadweight across contagions
+    """
+    infected_by = np.asarray(infected_by)
+    quotas = np.asarray(quotas, dtype=int)
+    C = len(quotas)
+
+    D_i = np.zeros(C, dtype=int)
+    for c in range(C):
+        raw = int((infected_by == c).sum())
+        D_i[c] = max(0, raw - quotas[c])
+
+    return D_i, float(D_i.mean())
+
+
+def penetration(links, infected_by, seed_sets):
+    """CIC3 penetration: average BFS hop distance from seed nodes
+    through the subgraph induced by each contagion's infected nodes.
+
+    For contagion c, BFS starts from all seed nodes of c and expands
+    only through edges where both endpoints are infected by c.
+    Penetration P_c = mean hop distance over all non-seed nodes
+    infected by c. If contagion c infected only seed nodes (or none),
+    P_c = 0.
+
+    Args:
+        links: adjacency list, links[i] = list of neighbor indices.
+        infected_by: array of shape (N,) with values in {-1, 0..C-1}.
+        seed_sets: list of C lists, seed_sets[c] = list of seed node
+            indices for contagion c.
+
+    Returns:
+        (P_i, P_g):
+            P_i: np.ndarray of shape (C,), per-contagion penetration
+                (mean hop distance from seeds). 0 if no non-seed
+                infections.
+            P_g: float, mean penetration across contagions
+    """
+    from collections import deque
+
+    infected_by = np.asarray(infected_by)
+    C = len(seed_sets)
+
+    P_i = np.zeros(C)
+    for c in range(C):
+        seeds = seed_sets[c]
+        if not seeds:
+            continue
+
+        # BFS restricted to nodes infected by contagion c
+        dist = {}
+        queue = deque()
+        for s in seeds:
+            dist[s] = 0
+            queue.append(s)
+
+        while queue:
+            node = queue.popleft()
+            d = dist[node]
+            for nb in links[node]:
+                if nb not in dist and infected_by[nb] == c:
+                    dist[nb] = d + 1
+                    queue.append(nb)
+
+        # Average over non-seed infected nodes
+        non_seed_hops = [dist[n] for n in dist if dist[n] > 0]
+        if non_seed_hops:
+            P_i[c] = float(np.mean(non_seed_hops))
+
+    return P_i, float(P_i.mean())

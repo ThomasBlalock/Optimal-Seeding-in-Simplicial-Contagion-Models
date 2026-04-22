@@ -10,4 +10,4 @@ from .seeding import (
 )
 from .simulator import SCMSimulator
 from .cic3_simulator import CIC3Simulator
-from .analysis import mf_rho
+from .analysis import mf_rho, deadweight, penetration

@@ -11,8 +11,9 @@ class CIC3Simulator:
       infected by contagion c, it is locked out of all others.
     - SI dynamics: no recovery.
     - Quotas cap only the evaluation metric; contagions keep spreading
-      after their quota is met. Simulation terminates when ALL contagions
-      have met their quotas, when no susceptibles remain, or at t_max.
+      after their quota is met. Simulation terminates when no
+      susceptibles remain or at t_max. If stop_on_all_quotas_met is True,
+      also stops when all quotas are met (legacy behavior).
 
     State encoding: current_state[i] is 0 for susceptible or c+1 for a node
     infected by contagion c (1-indexed so the default 0 means susceptible).
@@ -36,6 +37,7 @@ class CIC3Simulator:
         beta_deltas,
         quotas,
         tie_break="uniform",
+        stop_on_all_quotas_met=False,
     ):
         self.links = links
         self.triangles = triangles
@@ -60,6 +62,7 @@ class CIC3Simulator:
                 f"unknown tie_break = {tie_break!r}; expected 'uniform' or 'intensity'"
             )
         self.tie_break = tie_break
+        self.stop_on_all_quotas_met = stop_on_all_quotas_met
 
         self.current_state = np.zeros(self.N, dtype=int)
         self.infected_by = np.full(self.N, -1, dtype=int)
@@ -88,7 +91,9 @@ class CIC3Simulator:
         for t in range(1, t_max + 1):
             self._step(t)
 
-            if self._all_quotas_met() or self._no_susceptibles():
+            if self._no_susceptibles() or (
+                self.stop_on_all_quotas_met and self._all_quotas_met()
+            ):
                 final = self.rho_history[-1]
                 while len(self.rho_history) < t_max + 1:
                     self.rho_history.append(final)
