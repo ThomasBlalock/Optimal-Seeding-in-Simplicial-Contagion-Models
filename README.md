@@ -8,7 +8,17 @@ Many diffusion processes are only valuable up to a hard quota. For instance, soc
 
 When evaluating CIC3 processes, we want to capture a few aspects of the system. The first is global attainment: we want to know how much of each contagion's quota was filled. The following definition matches this goal by only including infected nodes towards the numerator up to a given contagion's quota. 
 
-Let $\mathcal{C}$ be the set of contagions and let $C_i \in \mathcal{C}$ denote contagion $i$. Let $I_i^{\text{raw}}$ be the set of nodes that were infected by $C_i$, let $t(v)$ denote the infection timestep of node $v \in I_i^{\text{raw}}$, and let $Q_i$ be the quota for $C_i$. Define the capped infection count:
+Let $\mathcal{C}$ be the set of contagions.
+
+Let $C_i \in \mathcal{C}$ denote contagion $i$. 
+
+Let $I_i^{\text{raw}}$ be the set of nodes that were infected by $C_i$.
+
+Let $t(v)$ denote the infection timestep of node $v \in I_i^{\text{raw}}$.
+
+Let $Q_i$ be the quota for $C_i$. 
+
+Define the capped infection count:
 
 $$K_i = \min(|I_i^{\text{raw}}|, Q_i)$$
 
@@ -130,7 +140,7 @@ b. top left: aggregated RSC lambda delta sweeps. top right: aggregated BA and SB
 11. Penetration - Greater infectivity means less penetration/exploration of each contagion
 11a. top left P_g v A_g^td scatterplot. top right RSC penetration/lam/lam_d heatmap. bottom is penetration definition and conclusion
 11b. Math showing how the variance in hop distance is more at lower infectivities
-12. Conclusions - Exploration is bad for business
+12. Conclusions - Exploration is good for business
 
 13. Find relationships between topology and attainment, dead weight, and penetration.
 14. Community Structure - 
@@ -140,12 +150,12 @@ b. top left: aggregated RSC lambda delta sweeps. top right: aggregated BA and SB
 16. Conclusions - Community struture helps exploitation, power law degree distribution helps exploration
 
 17. What are the best seeding strategies to use in which situations?
-- Attainment By Seeding X Topology for RSC, PA, SBC Communities, PSO Communities
-18. 
-- Hubbyness X Random + Twitter
-
-10. Seeding vs Topology - Twitter Outlier. Why?
-11. Hypothesis: core periphery topology with isolated parts of the node, design a SBM topology to test plausability
-12. Core Periphery Regime - P_CP v P_PI heatmaps & barcharts - When hubs dominate, seeding the hubs wins. When communities dominate, coverage wins.
-13. Core Periphery Animations
-14. Conclusions: simple edges are good for this task, simplex edges are bad for this task, targeting spreading each contagion inside a community does not work well because some contagion inevitably ends up usurping a lot of extra nodes, there are 2 regimes depending on the interactions between hubbyness and community isolation that determines if random seeding or centrality-based seeding is best.
+- Top: Attainment By Seeding X Topology for RSC, PA, SBC Communities, PSO Communities. Bottom: Winner Matrix of Hub Prevalence X Community Structure
+18. Real World Data Test - Why is random working here? It's not in our matrix anywhere?
+- Seeding By Twitter Collapsed and Mutual
+19. Hypothesis: Sparseness + Community Structure + Core-Periphery "Rich Club" Structure
+- SBM Block Matrix
+20. 
+- P_CP v P_PI heatmaps & barcharts
+21. Conclusions
+- Update winners matrix with the new regime: hub prevalence, community prevalence, sparse bridges
