@@ -73,60 +73,66 @@ $$P_i = \frac{1}{|I_i^{\text{raw}}|} \sum_{v \in I_i^{\text{raw}}} \min_{s \in S
 **Global Mean Penetration:**
 $$P_g = \frac{1}{|\mathcal{C}|} \sum_{C_i \in \mathcal{C}} P_i$$
 
-### Penetration Analytical Proof: Inverse Relationship Between Infectivity and Penetration
+### 4. Analytical Proof: Inverse Relationship Between Infectivity and Penetration
 
-#### 1. System Definition
-Consider a contagion $i$ starting at a single seed node $s$ at depth $d=0$. 
-Let $Q$ be the contagion's strict quota.
-Let $k$ be the number of edges connecting $s$ to distinct nodes at depth $d=1$. 
+**Intuition:** When a contagion's capacity ($Q_i$) is fixed, topological penetration becomes a zero-sum game of probability mass. If the contagion fails to secure enough nodes in its immediate neighborhood (depth 1), it is mathematically forced to explore further out (depth 2 and beyond). Therefore, lowering the edge infectivity directly forces an increase in penetration depth.
+
+Consider a contagion $C_i$ starting at a single seed node $s \in S_i$ at depth $d=0$.
+Let $k$ be the number of edges connecting $s$ to distinct nodes at depth $d=1$.
 Let $\lambda \in [0, 1]$ be the simple edge infectivity (the probability of transmission across an edge in a single timestep).
 
-Let $X_1$ be the random variable representing the number of successful infections at depth $d=1$ during the first timestep. 
-Assuming independent edge transmissions, $X_1$ follows a Binomial distribution:
+Let $X_1$ be the random variable representing the number of successful infections at depth $d=1$ during the first timestep. Assuming independent edge transmissions, $X_1$ follows a Binomial distribution:
+
 $$X_1 \sim \text{Binomial}(k, \lambda)$$
 
-#### 2. The Fixed-Quota Depth Function
-Let $\bar{D}$ be the average topological depth of the $Q$ nodes infected by the contagion. 
-Because the contagion must infect exactly $Q$ nodes to halt, the sum of nodes infected at all depths must equal $Q$:
-$$\sum_{d=1}^{d_{\max}} X_d = Q$$
+**The Fixed-Quota Depth Function**
+To isolate the baseline penetration required to meet the quota, assume the contagion infects exactly $Q_i$ nodes (no deadweight). The sum of nodes infected at all depths $d$ must equal $Q_i$:
 
-The average depth of these $Q$ nodes is the sum of the nodes at each depth weighted by that depth:
-$$\bar{D} = \frac{1}{Q} \sum_{d=1}^{d_{\max}} d \cdot X_d$$
+$$\sum_{d=1}^{d_{\max}} X_d = Q_i$$
 
-We can isolate $X_1$ from the rest of the tree:
-$$\bar{D} = \frac{1}{Q} \left( 1 \cdot X_1 + \sum_{d=2}^{d_{\max}} d \cdot X_d \right)$$
+Per our definition of mean topological penetration ($P_i$), the average depth of these $Q_i$ nodes is:
 
-Because $d \ge 2$ for all remaining terms, we can establish a strict lower bound for the average depth. The minimum possible depth occurs if every single remaining node ($Q - X_1$) is infected exactly at depth $d=2$:
-$$\bar{D} \ge \frac{1}{Q} \Big( X_1 + 2(Q - X_1) \Big)$$
-$$\bar{D} \ge \frac{2Q - X_1}{Q} = 2 - \frac{X_1}{Q}$$
+$$P_i = \frac{1}{Q_i} \sum_{d=1}^{d_{\max}} d \cdot X_d$$
 
-#### 3. The Probability Mass Shift (Your Example)
-To isolate the effect of $\lambda$, we take the expected value of the average depth. From the inequality above:
-$$\mathbb{E}[\bar{D}] \ge 2 - \frac{\mathbb{E}[X_1]}{Q}$$
+We can isolate the depth $d=1$ infections ($X_1$) from the rest of the tree:
 
-For the scenario where the seed has exactly enough neighbors to satisfy the quota at depth 1 ($k = Q$), the expected number of nodes infected at depth 1 is simply the mean of the Binomial distribution:
-$$\mathbb{E}[X_1] = \lambda Q$$
+$$P_i = \frac{1}{Q_i} \left( 1 \cdot X_1 + \sum_{d=2}^{d_{\max}} d \cdot X_d \right)$$
 
-Substituting this into the inequality reveals the core relationship:
-$$\mathbb{E}[\bar{D}] \ge 2 - \frac{\lambda Q}{Q}$$
-$$\mathbb{E}[\bar{D}] \ge 2 - \lambda$$
+Because $d \ge 2$ for all remaining terms, we can establish a strict lower bound for the penetration. The absolute minimum possible depth occurs if every single remaining node ($Q_i - X_1$) is infected exactly at depth $d=2$:
 
-Furthermore, the only way to achieve a perfect minimum penetration of $\bar{D} = 1$ is if $X_1 = Q$. The probability of this occurring is:
-$$P(\bar{D} = 1) = P(X_1 = Q) = \binom{Q}{Q} \lambda^Q (1-\lambda)^0 = \lambda^Q$$
+$$P_i \ge \frac{1}{Q_i} \Big( X_1 + 2(Q_i - X_1) \Big)$$
 
-#### 4. Conclusion
-If $Q = 3$ and $\lambda = 1.0$:
-$$P(\bar{D} = 1) = 1.0^3 = 1.0$$
-The contagion is 100% guaranteed to saturate at depth 1.
+$$P_i \ge \frac{2Q_i - X_1}{Q_i} = 2 - \frac{X_1}{Q_i}$$
 
-If $Q = 3$ and $\lambda = 0.5$:
-$$P(\bar{D} = 1) = 0.5^3 = 0.125$$
-There is an 87.5% chance that the contagion fails to fill its quota at depth 1 ($X_1 < 3$). Because $\sum X_d$ is strictly fixed to $Q$, that missing probability mass is forced to propagate to $X_2, X_3 \dots X_n$, shifting the weighted average $\bar{D}$ strictly higher. 
+**The Probability Mass Shift**
+To isolate the effect of $\lambda$, we take the expected value of the penetration depth. From the inequality above:
 
-Therefore, taking the derivative with respect to $\lambda$:
-$$\frac{\partial P(\bar{D} = 1)}{\partial \lambda} = Q \lambda^{Q-1} > 0$$
+$$\mathbb{E}[P_i] \ge 2 - \frac{\mathbb{E}[X_1]}{Q_i}$$
 
-Because the probability of shallow saturation strictly increases with $\lambda$, the expected penetration depth $\mathbb{E}[\bar{D}]$ must strictly decrease as $\lambda$ increases.
+Consider the scenario where the seed has exactly enough neighbors to satisfy the quota at depth 1 ($k = Q_i$). The expected number of nodes infected at depth 1 is simply the mean of the Binomial distribution ($\mathbb{E}[X_1] = \lambda Q_i$). Substituting this reveals the core relationship:
+
+$$\mathbb{E}[P_i] \ge 2 - \frac{\lambda Q_i}{Q_i}$$
+
+$$\mathbb{E}[P_i] \ge 2 - \lambda$$
+
+Furthermore, the only way to achieve a perfect minimum penetration of $P_i = 1$ is if the contagion perfectly saturates its immediate neighbors ($X_1 = Q_i$). The probability of this occurring is:
+
+$$P(P_i = 1) = P(X_1 = Q_i) = \binom{Q_i}{Q_i} \lambda^{Q_i} (1-\lambda)^0 = \lambda^{Q_i}$$
+
+**Conclusion**
+If $Q_i = 3$ and $\lambda = 1.0$:
+$$P(P_i = 1) = 1.0^3 = 1.0$$
+The contagion is 100% guaranteed to saturate at depth 1, resulting in minimum penetration.
+
+If $Q_i = 3$ and $\lambda = 0.5$:
+$$P(P_i = 1) = 0.5^3 = 0.125$$
+There is an 87.5% chance that the contagion fails to fill its quota at depth 1 ($X_1 < 3$). Because the total nodes infected is fixed to $Q_i$, that missing probability mass is forced to propagate to deeper levels ($X_2, X_3 \dots X_n$), shifting the weighted average $P_i$ strictly higher. 
+
+Taking the derivative with respect to $\lambda$:
+
+$$\frac{\partial P(P_i = 1)}{\partial \lambda} = Q_i \lambda^{Q_i-1} > 0$$
+
+Because the probability of shallow saturation strictly increases with $\lambda$, the expected penetration depth $\mathbb{E}[P_i]$ must strictly decrease as $\lambda$ increases.
 
 ## Comparison with Prior Metrics
 
