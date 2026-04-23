@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CIC3 Stepwise Visualization</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        #mynetwork { width: 800px; height: 600px; border: 1px solid #ccc; background-color: #fafafa; }
+        .controls { margin-bottom: 15px; }
+        button { padding: 8px 16px; font-size: 14px; margin-right: 10px; cursor: pointer; }
+        button:disabled { cursor: not-allowed; opacity: 0.5; }
+        #status { font-weight: bold; font-size: 16px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <div id="status">Status: Generating network...</div>
+    <button id="nextBtn" disabled>Next Timestep</button>
+    <button id="resetBtn">Reset Network</button>
+</div>
+
+<div id="mynetwork"></div>
+
+<script>
+    const N_NODES = 40;
+    const P_EDGE = 0.1; // Probability of edge creation
+    
+    const CONTAGIONS = [
+        { id: 0, name: "Contagion 1 (Red)", color: "#e74c3c" },
+        { id: 1, name: "Contagion 2 (Green)", color: "#2ecc71" },
+        { id: 2, name: "Contagion 3 (Blue)", color: "#3498db" }
+    ];
+    const SEEDS_PER_CONTAGION = 3;
+
+    let nodes, edges, network;
+    let nodeStates = {}; // nodeId -> contagionId
+    let currentContagionIndex = 0;
+    let seedsPlacedCurrent = 0;
+    let isSimulating = false;
+
+    function generateRandomGraph() {
+        let nodesArray = [];
+        let edgesArray = [];
+        nodeStates = {};
+
+        for (let i = 0; i < N_NODES; i++) {
+            nodesArray.push({ id: i, label: String(i), color: "#ffffff", font: {color: "#333"} });
+            nodeStates[i] = null;
+        }
+
+        // Generate edges (Erdős-Rényi)
+        for (let i = 0; i < N_NODES; i++) {
+            for (let j = i + 1; j < N_NODES; j++) {
+                if (Math.random() < P_EDGE) {
+                    edgesArray.push({ from: i, to: j, color: "#ccc" });
+                }
+            }
+        }
+
+        // Ensure giant component (simple heuristic: add a central hub if too fragmented)
+        for (let i = 1; i < N_NODES; i++) {
+            if (edgesArray.filter(e => e.from === i || e.to === i).length === 0) {
+                edgesArray.push({ from: i, to: Math.floor(Math.random() * i), color: "#ccc" });
+            }
+        }
+
+        return { nodes: new vis.DataSet(nodesArray), edges: new vis.DataSet(edgesArray) };
+    }
+
+    function updateStatus() {
+        const statusEl = document.getElementById("status");
+        if (isSimulating) {
+            statusEl.textContent = "Simulation active. Click 'Next Timestep' to spread.";
+            statusEl.style.color = "black";
+        } else {
+            let c = CONTAGIONS[currentContagionIndex];
+            statusEl.textContent = `Select nodes for ${c.name} (${seedsPlacedCurrent}/${SEEDS_PER_CONTAGION} placed)`;
+            statusEl.style.color = c.color;
+        }
+    }
+
+    function initNetwork() {
+        const container = document.getElementById("mynetwork");
+        const data = generateRandomGraph();
+        nodes = data.nodes;
+        edges = data.edges;
+
+        const options = {
+            nodes: { shape: "dot", size: 15, borderWidth: 2, borderColor: "#333" },
+            physics: { stabilization: { iterations: 150 }, barnesHut: { gravitationalConstant: -2000 } },
+            interaction: { hover: true }
+        };
+
+        network = new vis.Network(container, data, options);
+
+        network.on("click", function (params) {
+            if (isSimulating || params.nodes.length === 0) return;
+            
+            let nodeId = params.nodes[0];
+            if (nodeStates[nodeId] !== null) return; // Node already infected
+
+            // Assign seed
+            let c = CONTAGIONS[currentContagionIndex];
+            nodeStates[nodeId] = c.id;
+            nodes.update({ id: nodeId, color: c.color, font: {color: "white"} });
+            
+            seedsPlacedCurrent++;
+
+            if (seedsPlacedCurrent >= SEEDS_PER_CONTAGION) {
+                currentContagionIndex++;
+                seedsPlacedCurrent = 0;
+                
+                if (currentContagionIndex >= CONTAGIONS.length) {
+                    isSimulating = true;
+                    document.getElementById("nextBtn").disabled = false;
+                }
+            }
+            updateStatus();
+        });
+
+        currentContagionIndex = 0;
+        seedsPlacedCurrent = 0;
+        isSimulating = false;
+        document.getElementById("nextBtn").disabled = true;
+        updateStatus();
+    }
+
+    // Stepwise Simulation Logic (1-hop simple infectivity)
+    function executeTimestep() {
+        let newInfections = {}; // proposed infections: targetId -> list of proposing contagionIds
+
+        // Evaluate frontier
+        edges.forEach(edge => {
+            let stateFrom = nodeStates[edge.from];
+            let stateTo = nodeStates[edge.to];
+
+            if (stateFrom !== null && stateTo === null) {
+                if (!newInfections[edge.to]) newInfections[edge.to] = [];
+                newInfections[edge.to].push(stateFrom);
+            }
+            if (stateTo !== null && stateFrom === null) {
+                if (!newInfections[edge.from]) newInfections[edge.from] = [];
+                newInfections[edge.from].push(stateTo);
+            }
+        });
+
+        let updates = [];
+        
+        // Resolve conflicts (mutually exclusive constraint)
+        for (let targetId in newInfections) {
+            let proposers = newInfections[targetId];
+            // Random tie-break if multiple contagions hit the same node in the same step
+            let winnerId = proposers[Math.floor(Math.random() * proposers.length)];
+            
+            nodeStates[targetId] = winnerId;
+            let c = CONTAGIONS.find(x => x.id === winnerId);
+            updates.push({ id: parseInt(targetId), color: c.color, font: {color: "white"} });
+        }
+
+        if (updates.length > 0) {
+            nodes.update(updates);
+        } else {
+            document.getElementById("status").textContent = "Steady State Reached. No more nodes can be infected.";
+            document.getElementById("nextBtn").disabled = true;
+        }
+    }
+
+    document.getElementById("nextBtn").addEventListener("click", executeTimestep);
+    document.getElementById("resetBtn").addEventListener("click", initNetwork);
+
+    window.onload = initNetwork;
+</script>
+
+</body>
+</html>
