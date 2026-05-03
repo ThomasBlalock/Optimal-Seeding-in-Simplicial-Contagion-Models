@@ -421,6 +421,3 @@ All synthetic networks are generated using the `scm` Python package implementing
 **Statistical Aggregation:**
 - All reported means and standard deviations computed across independent trials
 - Error bars in figures represent $\pm 1$ standard deviation
-
-## Documentation
-Coding tools such as Claude Code and Hermes helped substantially with the generation of the experiments notebooks, the non-SCM network generation, and the Twitter network processing. All interpretations, writing, theorization, and intent is my own. AI was used to format the mathematics and paper into LaTeX.

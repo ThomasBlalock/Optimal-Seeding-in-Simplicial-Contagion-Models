@@ -1,0 +1,662 @@
+\documentclass[sigconf]{acmart}
+
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\copyrightyear{2025}
+\acmYear{2025}
+\acmConference[KDD '25]{Proceedings of the 31st ACM SIGKDD Conference on Knowledge Discovery and Data Mining}{August 2025}{Toronto, Canada}
+\acmBooktitle{Proceedings of the 31st ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD '25), August 2025, Toronto, Canada}
+\acmDOI{10.1145/XXXXXX.XXXXXX}
+\acmISBN{978-1-4503-XXXX-X/25/08}
+
+\begin{CCSXML}
+<ccs2012>
+   <concept>
+       <concept_id>10002950.10003648.10003688.10003693</concept_id>
+       <concept_desc>Mathematics of computing~Stochastic processes</concept_desc>
+       <concept_significance>500</concept_significance>
+   </concept>
+   <concept>
+       <concept_id>10003033.10003083.10003094</concept_id>
+       <concept_desc>Networks~Network dynamics</concept_desc>
+       <concept_significance>500</concept_significance>
+   </concept>
+   <concept>
+       <concept_id>10010405.10010481.10010487</concept_id>
+       <concept_desc>Applied computing~Forecasting</concept_desc>
+       <concept_significance>300</concept_significance>
+   </concept>
+</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Mathematics of computing~Stochastic processes}
+\ccsdesc[500]{Networks~Network dynamics}
+\ccsdesc[300]{Applied computing~Forecasting}
+
+\keywords{social contagion, simplicial complexes, network dynamics, seeding strategies, information diffusion}
+
+\begin{document}
+
+\title{Optimizing Seeding in Competitive Independent Capacity-Constrained Cascades}
+
+\author{Thomas Blalock}
+\affiliation{
+  \institution{University of Virginia}
+  \city{Charlottesville}
+  \country{United States}
+}
+\email{vvz8gb@virginia.edu}
+
+\begin{abstract}
+This paper introduces the Competitive Independent Capacity-Constrained Cascade (CIC3) model for studying social contagion in networks with higher-order interactions. Building upon the Simplicial Contagion Model (SCM), we extend the framework to capture scenarios where multiple diffusion processes compete simultaneously for a finite pool of participants, each with a hard quota. We define novel evaluation metrics including time-discounted global attainment, deadweight loss, and penetration depth to characterize CIC3 dynamics. Through extensive simulations on synthetic and empirical networks, we investigate how network topology and seeding strategies affect system performance. Our findings reveal that: (1) increasing pairwise infectivity substantially improves attainment while higher-order infectivity has minimal effect, (2) power-law degree distributions negatively impact CIC3 performance due to first-mover advantages at hubs, and (3) high-degree seeding generally outperforms community-based strategies except in networks with strong community structure and no hubs. These results provide practical guidance for optimizing seed placement in competitive diffusion scenarios such as event promotion and viral marketing campaigns.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+\label{sec:intro}
+
+Contagion refers to the process by which a pathogen such as a virus, information, or an opinion spreads across a network. Traditional models of contagion rely on graphs where interactions are strictly dyadic, meaning that the contagion is modeled to traverse along the simple edges of the network. This approach is inadequate in the context of social contagion, where contagion through group interactions behaves fundamentally differently from contagion through pairwise interactions. For example, someone adopting a norm because other people independently convinced them to can not be equated to them adopting a norm because everyone in a participating group is an adopter. This is the difference between simple contagion and complex contagion.
+
+To model this difference between pairwise interactions and group interactions, Iacopini et al.~\cite{iacopini2019} formalize different interactions as simplices. Recalling the definition of a simplex, a $k$-simplex $\sigma$ is a set of $k+1$ vertices. A 0-simplex would be just a single node. A 1-simplex would be a pair of nodes with an edge connecting them. A 2-simplex or higher would be the set of $k+1$ nodes with a hyperedge connecting them in a group interaction.
+
+With this definition of group interactions as simplices, Iacopini et al.~\cite{iacopini2019} proposed the simplicial contagion model (SCM) as a modeling framework for contagion in social contexts, unifying simple and complex contagion into a single coherent modeling framework. The SCM treats different $k$-simplex interactions as containing fundamentally different processes by describing contagion as a stochastic process where the infection rates depend on the dimensionality of the interaction. In simpler terms, the infection rate of a 1-simplex ($\beta$) and that of a 2-simplex ($\beta_{\Delta}$) are independent of each other. When modeled this way, group influence cannot be decomposed into independent pairwise edges.
+
+Iacopini et al.~\cite{iacopini2019} tested the SCM on several empirical and synthetic networks, yielding two primary conclusions: (i) higher-order interactions change the epidemic threshold transition from continuous to discontinuous and (ii) a bistable region emerges where both healthy and endemic states co-exist depending on the initial infection density. The SCM featuring a first-order phase transition explains well the ``critical mass'' observed to be required to trigger large-scale social change.
+
+While the SCM assumes the contagion is unbounded, many social diffusion processes are only valuable up to a hard quota. For instance, social activities that leverage social contagion to recruit participants might only require a certain number of attendees before each subsequent attendee provides no value to the system or detracts value. A full social volleyball game only requires 12 people; adding more people to the game would detract from the net experience by causing some people to watch from the sidelines for periods of time. We refer to these types of contagions as capacity-constrained cascades (C3s).
+
+Furthermore, the SCM assumes that only a single contagion exists in the system, but many real-world systems contain competing diffusion processes. Sometimes, many C3s are introduced simultaneously competing for attention with the goal of each one meeting its quota. We call this system competitive independent capacity-constrained cascades (CIC3). Expanding on the previous example, if there were multiple social events occurring at the same time, then each event would be competing for attendees in the CIC3 process.
+
+We define the CIC3 process and empirically characterize the effects of topology and infection seeding on the CIC3 process over simplicial complexes.
+
+\section{Prior Works}
+\label{sec:prior}
+
+To perform their experiments, Iacopini et al.~\cite{iacopini2019} generated random simplicial complexes (RSC) on a scale ranging from low rescaled infectivity to high rescaled infectivity, calculated as a function of the pairwise infection rate $\beta$, the recovery rate $\mu$, and the average node degree $\langle k \rangle$ according to the formula:
+\begin{equation}
+\lambda = \frac{\beta \langle k \rangle}{\mu}
+\label{eq:lambda}
+\end{equation}
+where $\lambda$ represents the base rescaled infectivity. This rescaled infectivity score represents the potency of the contagion, meaning that a higher rescaled infectivity should correlate with a higher final infection density. They simulated the SCM over these synthetic networks at varying levels of 2-simplex rescaled infectivity rates ($\lambda_{\Delta}$). The results from these simulations display the discontinuous phase transition.
+
+Given the use of RSCs, they characterized the discontinuous phase transition using the mean field approach, which provided a theoretical convergence node density based on the assumption of homogeneous mixing to check their simulations against. This yielded the following analytical solution for final node density:
+\begin{equation}
+\rho^{*} = \frac{(\lambda_{\Delta} - \lambda) + \sqrt{(\lambda - \lambda_{\Delta})^2 - 4\lambda_{\Delta}(1 - \lambda)}}{2\lambda_{\Delta}}
+\label{eq:rho_star}
+\end{equation}
+where $\lambda_{\Delta} = \frac{\beta_{\Delta}\langle k_{\Delta}\rangle}{\mu}$ is the 2-simplex rescaled infectivity. This analytical solution correctly captures the phase transition since the discriminant is negative, the non-zero roots become complex, meaning that the endemic stationary state ceases to exist in the real domain, leaving only the absorbing state at zero.
+
+Figure~\ref{fig:orig_phase} plots these simulations for varying values of rescaled infectivity and $\lambda_{\Delta}$, showing a discontinuous phase transition for each set of simulations using a non-zero $\lambda_{\Delta}$. But, when $\lambda_{\Delta}$ is zero, meaning that the model is reduced to a simple contagion model without higher order interactions, the visualization displays a second order continuous phase transition.
+
+Figure~\ref{fig:orig_bistable} plots simulations for varying initial densities of infected nodes over time with $\lambda$ fixed at 0.75 and $\lambda_{\Delta}$ fixed at 2.5. For this configuration, the theoretical initial node density threshold is:
+\begin{equation}
+\rho_{c} = \frac{(\lambda_{\Delta} - \lambda) - \sqrt{(\lambda - \lambda_{\Delta})^2 - 4\lambda_{\Delta}(1 - \lambda)}}{2\lambda_{\Delta}}
+\label{eq:rho_c}
+\end{equation}
+plotted as a dashed line. These temporal evolutions of the infection density show the simulations starting above the threshold converging to the theoretical final infection density while the simulations with an initial infection density below the threshold converge to an infection density of zero. This shows the bistable region where the infection density is either zero or converges into a state where both infected and healthy nodes coexist.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/fig1a.png}
+\caption{Original phase transition from Iacopini et al.~\cite{iacopini2019}, showing discontinuous transitions for non-zero $\lambda_{\Delta}$.}
+\label{fig:orig_phase}
+\Description{Line plot showing phase transitions with lambda on x-axis and final infection density on y-axis. Multiple curves show different lambda_delta values, with curves showing sharp jumps at critical points for non-zero lambda_delta values.}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/fig1b.png}
+\caption{Original bistable temporal evolution from Iacopini et al.~\cite{iacopini2019}, showing convergence to endemic or healthy states based on initial density.}
+\label{fig:orig_bistable}
+\Description{Multiple line plots showing infection density over time for different initial densities. Curves starting above the threshold converge to endemic state, while those below converge to zero.}
+\end{figure}
+
+\section{Validating Our SCM}
+\label{sec:validation}
+
+We aim to replicate their conclusion regarding the SCM yielding a discontinuous phase transition and the emergence of the bistable region dependent on initial node density. In order to perform this replication, we aim to recreate their simulations over synthetic 2-simplex networks, recreating Figures~\ref{fig:orig_phase} and~\ref{fig:orig_bistable}.
+
+To recreate Figure~\ref{fig:orig_phase}, we must simulate the SCM for varying rescaled infectivities and values of $\lambda_{\Delta}$. Our simulation results must feature a discontinuous phase transition that approximately coincides with the mean field approach analytical solution as described in Equation~\eqref{eq:rho_star}. Including the mean field approach solution validates the implementation of our random graph generation and simulation mechanics. Ensuring that our simulation results approximately match, not only the results in Iacopini et al.~\cite{iacopini2019}, but also the theoretical results as calculated by the mean field approach verifies that our models are not globally biased in either direction.
+
+To recreate Figure~\ref{fig:orig_bistable}, we must simulate the SCM over varying values of initial node density with a fixed rescaled infectivity, track the infection density over time, and observe the expected hysteresis loop and bistability. The results of these simulations must produce a bistable region, with simulations starting above the theoretical threshold as calculated by the mean field approach converging to the predicted final infection density and simulations below that threshold converging to zero. In these simulations, we expect the threshold to be sensitive to stochastic noise in the SCM relative to the size of the random network. This is because, on small networks, random chance may push the infection density of simulations starting near the threshold above the threshold. On larger networks, the noise will be less impactful to the overall network density, and thus the results will be less sensitive to noise.
+
+The replication successfully reproduced the discontinuous phase transition and bistability inherent to the SCM. Intuitively, this discontinuity arises because 2-simplices require multiple active neighbors to transmit the contagion, creating a synergistic effect that only sustains itself once a critical mass (the threshold density) is reached. Furthermore, because these simulations utilized RSCs---which possess a binomial degree distribution and lack dense community clustering---the structural distinction between random and deliberate initial seeding is minimal, allowing the homogeneous mixing assumption of the mean-field approach to hold accurately.
+
+Our simulations, using the same simulation and graph construction hyperparameters as the original paper, are shown in Figures~\ref{fig:replicated_phase} and~\ref{fig:replicated_bistable}. Figure~\ref{fig:replicated_phase} shows the discontinuous phase transition for each SCM simulation, and each simulation approximately matches the mean field approach analytical solution. Figure~\ref{fig:replicated_bistable} shows the bistable region dependent on initial node density, with simulations starting above the density threshold converging to an endemic state and simulations starting below the density threshold converging to a healthy state.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/fig2a.png}
+\caption{Replicated phase transition (N=2000), showing agreement with mean-field theory.}
+\label{fig:replicated_phase}
+\Description{Line plot replicating the phase transition with multiple curves for different lambda_delta values. Solid lines show simulation results, dashed lines show theoretical predictions.}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/fig2b.png}
+\caption{Replicated bistable region (N=2000), showing hysteresis behavior.}
+\label{fig:replicated_bistable}
+\Description{Multiple line plots showing temporal evolution of infection density. Different colored curves represent different initial densities, with clear separation between convergent behaviors.}
+\end{figure}
+
+Notably, two simulations with an initial node densities below the threshold, converged to the endemic state. One explanation is that this exception was due to random noise since the network was small (2,000 nodes). Another explanation is that the theoretical threshold is too high since its derivation assumed homogeneous mixing. To test these explanations, after verifying that all network statistics matched that of the original paper, we reran the simulation over larger random networks with 8,000 nodes. If the anomaly was due to random chance, then the scale would reduce the impact of noise and the results would adhere to the theoretical threshold. The results of these simulations, shown in Figure~\ref{fig:noise_reduction}, did not coincide with the theoretical results. Thus, we concluded that the real threshold for our random graphs was lower than the theoretical threshold derived via the mean field approach.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/fig3.png}
+\caption{Noise reduction and theoretical convergence (N=8000).}
+\label{fig:noise_reduction}
+\Description{Temporal evolution plots for N=8000 network, showing reduced variance in convergence behavior compared to smaller networks.}
+\end{figure}
+
+\section{Competitive Independent Capacity-Constrained Cascade (CIC3) Model}
+\label{sec:cic3}
+
+We now introduce the Competitive Independent Capacity-Constrained Cascade (CIC3) model for social contagion. We first define the conditions where CIC3 systems emerge. Then, we define and provide intuition for the primary metric to understand the results of a CIC3 diffusion process. Lastly, we define and provide intuition for secondary metrics that help when analyzing CIC3 diffusion processes.
+
+\subsection{CIC3 Formulation}
+\label{subsec:formulation}
+
+CIC3 diffusion processes are driven by the presence of a special type of diffusion process. Let $\mathcal{C}$ be the set of contagions and $C_i \in \mathcal{C}$ denote contagion $i$. Each contagion spreads across the network via diffusion process, accumulating infected nodes. Let $I_i^{\text{raw}}$ be the set of nodes that were infected by $C_i$. Each contagion receives value from infected nodes only up to a quota. Any node infected past this quota provides no value to the system. Let $Q_i$ be the quota for $C_i$.
+
+\subsection{Primary Metric: Time-Discounted Attainment}
+\label{subsec:attainment}
+
+When evaluating CIC3 processes, we are primarily interested in the net value accrued to the system. A couple assumptions will drive our mathematical definition of value:
+\begin{enumerate}
+    \item Each contagion is equally important (meaning that reaching each contagion's quota contributes equally to the net value no matter the size of the contagion).
+    \item The number of nodes already infected with contagion $i$ does not affect the value provided by infecting another node prior to exceeding the quota.
+\end{enumerate}
+
+To obtain to a net value function, we first define value local to a specific contagion $i$ as the proportion of the capped count of nodes infected up to the quota. We call this metric attainment:
+\begin{align}
+    K_i &= \min(|I_i^{\text{raw}}|, Q_i) \\
+    A_i &= \frac{K_i}{Q_i} \in [0, 1]
+\end{align}
+
+To create a fair comparison across different graph sizes and contagion statistics, we average across $A_i$ to calculate the global attainment:
+\begin{equation}
+    A_g = \frac{1}{|\mathcal{C}|} \sum_{C_i \in \mathcal{C}} A_i \in [0, 1]
+\label{eq:global_attainment}
+\end{equation}
+
+In most use cases, the speed of contagion is also of interest. Infecting a node at an earlier timestep is more valuable than infecting a node at a later timestep. Assuming we have some value function $V(t)$ that maps an infection timestep to a value in $[0,1]$, we can reformulate single-contagion attainment into a time-discounted single-contagion attainment.
+
+Let $t_{i,(1)} \le t_{i,(2)} \le \dots \le t_{i,(|I_i^{\text{raw}}|)}$ be the sorted infection times for nodes in $I_i^{\text{raw}}$. Define the time-discounted capped count as the sum of values for the earliest $\min(Q_i, |I_i^{\text{raw}}|)$ infections, truncated at $Q_i$:
+\begin{equation}
+    K_i^{\text{td}} = \min\left(\sum_{k=1}^{\min(Q_i, |I_i^{\text{raw}}|)} V(t_{i,(k)}), Q_i\right)
+\label{eq:td_capped_count}
+\end{equation}
+
+Time-discounted single-contagion attainment is then calculated using the time-discounted capped count:
+\begin{equation}
+    A_i^{\text{td}} = \frac{K_i^{\text{td}}}{Q_i} \in [0, 1]
+\label{eq:td_attainment}
+\end{equation}
+
+And, time-discounted global attainment is calculated as the mean of time-discounted single-contagion attainment:
+\begin{equation}
+    A_g^{\text{td}} = \frac{1}{|\mathcal{C}|} \sum_{C_i \in \mathcal{C}} A_i^{\text{td}} \in [0, 1]
+\label{eq:td_global_attainment}
+\end{equation}
+
+Our analysis focuses on the dynamics of CIC3 where the above assumptions are held and our conclusions are limited to such scenarios. Relaxing the assumptions would trivially change the value function to be conditioned on the contagion and infected node infection rank.
+
+\subsection{Secondary Metric: Deadweight Loss}
+\label{subsec:deadweight}
+
+In a capacity-constrained system where nodes can only be infected by a single contagion, any node consumed by a contagion that has already met its quota represents wasted capacity. Deadweight loss quantifies this multi-order competitive interference, highlighting how dense local spreading starves competing contagions. We define single-contagion deadweight simply as the number of nodes infected beyond that contagion's quota:
+\begin{equation}
+    D_i = \max(0, |I_i^{\text{raw}}| - Q_i)
+\label{eq:deadweight}
+\end{equation}
+
+Global deadweight then becomes the sum of single-contagion deadweight:
+\begin{equation}
+    D_g = \sum_{C_i \in \mathcal{C}} D_i
+\label{eq:global_deadweight}
+\end{equation}
+
+\subsection{Secondary Metric: Penetration}
+\label{subsec:penetration}
+
+To differentiate between local trapping (exploitation) and network-wide spread (exploration), penetration measures the average structural distance a contagion travels from its origin. Lower values indicate the cascade was trapped in its local neighborhood, while higher values indicate successful navigation across bridges to distinct network regions. Let $S_i$ be the set of initial seed nodes for contagion $C_i$, and $d_G(u,v)$ be the shortest path distance in the base graph $G$. The single-contagion mean penetration depth then becomes:
+\begin{equation}
+    P_i = \frac{1}{|I_i^{\text{raw}}|} \sum_{v \in I_i^{\text{raw}}} \min_{s \in S_i} d_G(s, v)
+\label{eq:penetration}
+\end{equation}
+
+The global penetration becomes the average penetration across each contagion:
+\begin{equation}
+    P_g = \frac{1}{|\mathcal{C}|} \sum_{C_i \in \mathcal{C}} P_i
+\label{eq:global_penetration}
+\end{equation}
+
+\section{Results}
+\label{sec:results}
+
+We present our empirical findings on CIC3 dynamics across three dimensions: the effects of infectivity parameters on attainment and secondary metrics, the influence of network topology on system performance, and the impact of seeding strategies across different network structures. Our experiments cover three synthetic topologies: Random Simplicial Complexes (RSC), Stochastic Block Models (SBM) with community structure, and Barabasi-Albert (BA) preferential attachment networks with power-law degree distributions.
+
+\subsection{Understanding CIC3 in Complex Contagion}
+\label{subsec:infectivity}
+
+Here we examine the effects of $\lambda$ and $\lambda_{\Delta}$ on global attainment, deadweight, and penetration, in addition to exploring the effects of deadweight and penetration on attainment. Figure~\ref{fig:attainment_deadweight} shows the relationship between deadweight and attainment across network topologies. Each topology shows a clear and statistically significant negative correlation between deadweight and attainment. This is expected since deadweight directly counteracts the system's ability to distribute nodes to contagions. Also of note, the BA networks have a somewhat less negative correlation than the other two while having a lower overall attainment and higher overall deadweight. The most intuitive explanation is that, whichever contagion gets to the hub first, that contagion immediately infects beyond its quota, driving up deadweight, while the other network topologies place each contagion on more equal footing.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/attainment-v-deadweight.png}
+\caption{Attainment vs.~deadweight across network topologies, showing negative correlation.}
+\label{fig:attainment_deadweight}
+\Description{Scatter plot showing negative correlation between deadweight (x-axis) and attainment (y-axis) for three network types: RSC, BA, and SBM.}
+\end{figure}
+
+Figure~\ref{fig:attainment_penetration} shows the effect of penetration on attainment. Overall, penetration has a high correlation with attainment, but most of the correlation comes from the power-law distributed BA network. The other topologies seem minorly correlated. One explanation is that high penetration means high exploration. Exploration might just matter more in power-law distributed networks where infecting a single node might trap a contagion in a small part of the network.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/attainment-v-penetration.png}
+\caption{Attainment vs.~penetration across network topologies.}
+\label{fig:attainment_penetration}
+\Description{Scatter plot showing relationship between penetration (x-axis) and attainment (y-axis) for three network types.}
+\end{figure}
+
+Figures~\ref{fig:attainment_lambda} and~\ref{fig:attainment_lambda_delta} show the correlation of $\lambda$ with attainment and the correlation of $\lambda_{\Delta}$ with attainment, respectively. Increasing $\lambda$ increases attainment substantially, but increasing $\lambda_{\Delta}$ does not affect the system.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/rsc-attainment-v-lam.png}
+\caption{Global attainment vs.~$\lambda$ (rescaled link infectivity).}
+\label{fig:attainment_lambda}
+\Description{Line plot showing global attainment increasing with lambda for different lambda_delta values.}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/rsc-attainment-v-lam_d.png}
+\caption{Global attainment vs.~$\lambda_{\Delta}$ (rescaled triangle infectivity).}
+\label{fig:attainment_lambda_delta}
+\Description{Line plot showing minimal change in global attainment as lambda_delta varies.}
+\end{figure}
+
+Figures~\ref{fig:deadweight_heatmap} and~\ref{fig:penetration_heatmap} explain this behavior. Figure~\ref{fig:deadweight_heatmap} is a heatmap showing the values of deadweight at different values of $\lambda$ (x axis) and $\lambda_{\Delta}$ (y axis). Those figures show that $\lambda$ correlates with lower deadweight and higher penetration while $\lambda_{\Delta}$ does not affect those metrics.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/deadweight-v-lam-lam_d.png}
+\caption{Deadweight heatmap across $\lambda$ and $\lambda_{\Delta}$.}
+\label{fig:deadweight_heatmap}
+\Description{Heatmap showing deadweight values across lambda (x-axis) and lambda_delta (y-axis), with color intensity indicating deadweight magnitude.}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/penetration-v-lam-lam_d.png}
+\caption{Penetration heatmap across $\lambda$ and $\lambda_{\Delta}$.}
+\label{fig:penetration_heatmap}
+\Description{Heatmap showing penetration values across lambda (x-axis) and lambda_delta (y-axis).}
+\end{figure}
+
+From these experiments, we see that increasing $\lambda$ leads to higher attainment driven by lower deadweight and higher penetration. Lower deadweight and higher penetration both correlate with higher attainment. We also saw that complex infectivity ($\lambda_{\Delta}$) does not affect the system notably.
+
+\subsection{Understanding the Effects of Topology on CIC3}
+\label{subsec:topology}
+
+The first hypothesis to test was that community structure would affect CIC3 substantially, enabling it to achieve higher attainment by enabling each contagion to spread in isolated communities largely unhindered by other contagions. To test this hypothesis, we devised an experiment meant to measure the effect of community structure. The idea of the experiment is to vary between heavy community structure and a random graph by varying the difference between the off-diagonal block probabilities ($p_{\text{inter}}$) and the diagonal probabilities ($p_{\text{intra}}$) of the SBM.
+
+When $p_{\text{inter}} \ll p_{\text{intra}}$, the system features isolated and tightly knit communities. When $p_{\text{inter}} = p_{\text{intra}}$, the network collapses to a random network. While $p_{\text{inter}}$ is swept from 0 to $p_{\text{mid}}$, $p_{\text{intra}}$ is swept from 1 to $p_{\text{mid}}$ to preserve the average degree of the system. The results are plotted against attainment, deadweight, and penetration in Figure~\ref{fig:community_structure}.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.32\linewidth]{figures/attainment-v-community-structure.png}
+\includegraphics[width=0.32\linewidth]{figures/deadweight-v-community-structure.png}
+\includegraphics[width=0.32\linewidth]{figures/penetration-v-community-structure.png}
+\caption{Community structure sweep results: attainment (left), deadweight (center), and penetration (right) vs.~$p_{\text{inter}}$.}
+\label{fig:community_structure}
+\Description{Three line plots showing metrics vs p_inter. Left: attainment remains flat. Center: deadweight remains flat. Right: penetration remains flat. All show anomaly at p_inter=0.}
+\end{figure*}
+
+Attainment, deadweight, and penetration seem to all not be affected by community structure in the way we have defined it in this experiment. The anomaly at $p_{\text{inter}} = 0$ is due to communities being entirely disconnected and not containing a seed node, which is a trivial result. The rest of each plot shows no clear connection between community structure and our key metrics.
+
+The next topological feature we are interested in is the prevalence of hubs and a power law degree distribution. We hypothesized in the previous section that the first mover advantage that a power law degree distribution enables applies to contagions in CIC3 in addition to the introduction of the nodes themselves. Whichever node reaches a hub first will immediately infect beyond its quota, increasing deadweight. To test this hypothesis, we formulate an experiment that varies a network between a power law and a poisson degree distribution by progressively adding noise to the topology.
+
+We first build a preferential attachment network via the algorithm established by Barabasi and Albert~\cite{barabasi1999}. Then, we randomly sample a proportion of edges $p_{\text{rp}}$ and delete them. We then add the same number of edges back into the network connecting them to random nodes. At $p_{\text{rp}} = 0$, the network is completely generated by the BA procedure, featuring a power law degree distribution. At $p_{\text{rp}} = 0.5$, half of the network is noise while the other half adheres to the power law degree distribution. At $p_{\text{rp}} = 1$, the network is a random graph. We then analyze the correlations between the edge rewiring fraction and attainment, deadweight, and penetration. The results are shown in Figure~\ref{fig:edge_rewiring}.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.32\linewidth]{figures/attainment-v-edge-rewiring.png}
+\includegraphics[width=0.32\linewidth]{figures/deadweight-v-edge-rewiring.png}
+\includegraphics[width=0.32\linewidth]{figures/penetration-v-edge-rewiring.png}
+\caption{Edge rewiring sweep results: attainment (left), deadweight (center), and penetration (right) vs.~rewiring fraction.}
+\label{fig:edge_rewiring}
+\Description{Three line plots showing metrics vs rewiring fraction. Left: attainment increases with rewiring. Center: deadweight decreases with rewiring. Right: penetration increases with rewiring.}
+\end{figure*}
+
+The introduction of noise significantly benefits the system by increasing attainment, decreasing deadweight, and increasing penetration. While this does not prove the first mover advantage hypothesis, it does prove that a power law degree distribution negatively affects CIC3 systems.
+
+\subsection{Understanding the Effects of Seeding on CIC3}
+\label{subsec:seeding}
+
+We now seek to understand the effects of the placement of the initial infected seed nodes across topologies in CIC3. We formalize three seeding strategies: random seeding, high degree seeding, and farthest-first seeding. The random seeding strategy randomly samples the next node to seed from a uniform distribution. The high degree seeding strategy selects the node with the highest degree who isn't already infected. The farthest first strategy maximizes the distance between the selected node, the largest hub, and any other seeds to provide the contagions with maximum separation to spread unimpeded by others.
+
+We test each seeding strategy across a matrix of topologies featuring each combination of community structure and hub prevalence. The RSC has neither community structure nor hubs. The SBM with 10 communities has community structure but no hubs. The BA network has hubs but no community structure. And lastly, we modified the popularity-similarity optimization network described by Papadopoulos et al.~\cite{papadopoulos2012} by discretizing the possible angles to sample from and adding minimal noise to create a network with both community structure and a power law degree distribution. Lastly, we test the Twitter Mutual follows network from the Stanford Large Network Dataset Collection~\cite{leskovec2014}. The results of the tests are shown in Figure~\ref{fig:seeding_comparison}.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/attainment-v-topology-seed-strategy.png}
+\caption{Attainment comparison across seeding strategies and topologies.}
+\label{fig:seeding_comparison}
+\Description{Grouped bar chart comparing five seeding strategies across multiple topologies. High Degree generally performs best.}
+\end{figure}
+
+The high degree seeding strategy nearly universally beats other strategies. Except in the topology where there is community structure but no hubs, where the farthest-first strategy works best. It is possible this topology is different from the others because farthest-first takes advantage of community structure but still works worse than high degree in the presence of hubs.
+
+To test this effect, we design an experiment to vary the control of a central hub community (rich club). The idea is to vary how well connected a hub community is to other communities compared to how well they are connected to each other. Let $p_{\text{inter}}$ be the inter-connection block probabilities for the non-hub communities, $p_{\text{CP}}$ be the block connection probability between the core community and the periphery communities, and $p_{\text{intra}}$ be the intra-community block probability. We then sweep $p_{\text{inter}}$ and $p_{\text{CP}}$ from 0 to $p_{\text{intra}}$ and analyze the results across the $p_{\text{CP}}-p_{\text{inter}}$ spectrum.
+
+When $p_{\text{CP}} > p_{\text{inter}}$, the hub community is a rich club that is well connected in the system. When $p_{\text{inter}} > p_{\text{CP}}$, the central community is a poor club that is worse-connected compared to the rest of the network.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.48\linewidth]{figures/pcp-v-pinter-ff-hd.png}
+\includegraphics[width=0.48\linewidth]{figures/attainment-v-pcp-pinter.png}
+\caption{Rich club experiment results: strategy difference heatmap (left) and attainment (right).}
+\label{fig:rich_club}
+\Description{Two heatmaps showing strategy comparison across p_CP and p_inter parameters. Left shows difference between strategies, right shows attainment levels.}
+\end{figure*}
+
+Figure~\ref{fig:rich_club} shows that high degree only starts winning substantially at high values of $p_{\text{CP}}$ and low values of $p_{\text{inter}}$ (rich club) while the rest looks like noise. The 1-d sweeps show an interesting result at the ``rich club'' side of the spectrum. High degree works substantially better when there is a well connected rich club because it reduces deadweight. One possible explanation is that, while the other strategies allow for one contagion to reach the rich club first thus providing an unfair advantage to that contagion, the high degree seeding places all contagions in the rich club to start, meaning that each contagion has an equal footing.
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+This paper introduced the Competitive Independent Capacity-Constrained Cascade (CIC3) model, extending the Simplicial Contagion Model to capture competitive diffusion scenarios with hard quotas. Through systematic experimentation across synthetic and empirical networks, we identified several key findings that inform the design of seeding strategies in competitive contagion systems.
+
+First, we found that pairwise infectivity ($\lambda$) substantially affects system performance, with higher values leading to increased attainment through reduced deadweight and improved penetration. Surprisingly, higher-order infectivity ($\lambda_{\Delta}$) showed minimal impact on CIC3 outcomes, suggesting that group interactions play a secondary role in competitive scenarios compared to single-contagion settings.
+
+Second, our investigation of network topology revealed that power-law degree distributions negatively impact CIC3 performance due to first-mover advantages at hub nodes. This finding contrasts with single-contagion scenarios where hubs typically facilitate rapid spread. The introduction of randomness through edge rewiring consistently improved system performance across all metrics.
+
+Third, our seeding strategy experiments demonstrated that high-degree seeding generally outperforms community-based approaches, with one notable exception: in networks with strong community structure but no dominant hubs, farthest-first seeding achieved superior results by exploiting community boundaries.
+
+These findings have practical implications for applications such as event promotion, viral marketing, and information dissemination campaigns where multiple messages compete for limited attention. Future work could extend the CIC3 framework to weighted networks, dynamic topologies, and asymmetric contagion scenarios where different processes have varying infectivity rates.
+
+\begin{acks}
+We would like to thank Dr. Alex Gates for supporting this project.
+\end{acks}
+
+\bibliographystyle{ACM-Reference-Format}
+\begin{thebibliography}{4}
+
+\bibitem{iacopini2019}
+Iacopini, I., Petri, G., Barrat, A., and Latora, V.
+2019.
+Simplicial models of social contagion.
+\textit{Nat. Commun.} 10, 1 (2019), 2485.
+
+\bibitem{barabasi1999}
+Barab{\'a}si, A.~L. and Albert, R.
+1999.
+Emergence of scaling in random networks.
+\textit{Science} 286, 5439 (1999), 509--512.
+
+\bibitem{papadopoulos2012}
+Papadopoulos, F., Kitsak, M., Serrano, M.~A., Bogun{\'a}, M., and Krioukov, D.
+2012.
+Popularity versus similarity in growing networks.
+\textit{Nature} 489, 7417 (2012), 537--540.
+
+\bibitem{leskovec2014}
+Leskovec, J. and Krevl, A.
+2014.
+SNAP Datasets: Stanford Large Network Dataset Collection.
+\url{https://snap.stanford.edu/data}.
+
+\bibitem{blalock2026}
+Code Availability
+\url{https://github.com/ThomasBlalock/Optimal-Seeding-in-Simplicial-Contagion-Models}
+
+\end{thebibliography}
+
+\appendix
+
+\section{Experimental Methodologies}
+\label{app:methodologies}
+
+This appendix provides detailed specifications for the experiments discussed in Sections~\ref{subsec:infectivity}, \ref{subsec:topology}, and~\ref{subsec:seeding}.
+
+\subsection{Community Structure Sweep Experiment}
+\label{app:community}
+
+\textbf{Objective:} Measure the effect of community structure strength on CIC3 metrics while holding average degree constant.
+
+\textbf{Network Configuration:}
+\begin{itemize}
+    \item \textbf{Model:} Stochastic Block Model (SBM) with $K=25$ communities
+    \item \textbf{Size:} $N=2000$ nodes, with 80 nodes per community
+    \item \textbf{Triangle probability:} $p_{\text{tri}} = 0.003$ (intra-community only)
+    \item \textbf{Topology seed:} 2025 (for reproducibility)
+\end{itemize}
+
+\textbf{Constant-Edge-Budget Design:}
+To isolate the effect of community structure from density effects, we designed a sweep where total expected edges remain constant as community structure varies. The sweep moves along a curve where:
+\begin{itemize}
+    \item At $p_{\text{inter}} = 0$: Communities are isolated full cliques ($p_{\text{intra}} \approx 1$)
+    \item At $p_{\text{inter}} \approx 0.03$: Communities are barely distinguishable ($p_{\text{intra}} \approx 0.08$)
+\end{itemize}
+
+The relationship follows: $p_{\text{intra}} = 1 - 30.7 \cdot p_{\text{inter}}$
+
+\textbf{CIC3 Parameters:}
+\begin{itemize}
+    \item Number of contagions: $C=10$
+    \item Quotas: Equal quotas of $N/C = 200$ nodes each (sum equals $N$, no slack)
+    \item Seeds per contagion: 1
+    \item Rescaled infectivity: $\lambda = 1.0$, $\lambda_{\Delta} = 2.0$
+    \item Time discount: Exponential decay with rate 0.05
+    \item Maximum simulation time: $T_{\text{max}} = 300$ timesteps
+\end{itemize}
+
+\textbf{Simulation Protocol:}
+\begin{itemize}
+    \item 15 independent trials per $(p_{\text{inter}}, p_{\text{intra}})$ configuration
+    \item Random seeding strategy (MultiRandomSeeding)
+    \item Metrics recorded: $A_g$, $A_g^{\text{td}}$, $D_g$, $P_g$
+\end{itemize}
+
+\subsection{Hub Rewiring Experiment}
+\label{app:hub}
+
+\textbf{Objective:} Measure the effect of degree distribution on CIC3 metrics by progressively randomizing a power-law network.
+
+\textbf{Network Configuration:}
+\begin{itemize}
+    \item \textbf{Base model:} Barabasi-Albert (BA) preferential attachment
+    \item \textbf{Size:} $N=2000$ nodes
+    \item \textbf{BA parameters:} $m=5$ (edges per new node), $m_{\Delta}=2$ (triangles per new node)
+    \item \textbf{Rewiring:} Progressive edge rewiring from 0\% (pure BA) to 100\% (random graph)
+\end{itemize}
+
+\textbf{Rewiring Procedure:}
+\begin{enumerate}
+    \item Generate base BA network with topology seed 2025
+    \item For each rewiring fraction $p_{\text{rp}} \in [0, 0.05, 0.10, ..., 1.0]$:
+    \begin{itemize}
+        \item Sample $p_{\text{rp}} \times |E|$ edges uniformly at random
+        \item Remove sampled edges
+        \item Add same number of edges between random node pairs
+    \end{itemize}
+\end{enumerate}
+
+This preserves total edge count while reducing power-law characteristics.
+
+\textbf{CIC3 Parameters:}
+\begin{itemize}
+    \item Number of contagions: $C=10$
+    \item Quotas: Equal quotas summing to $N$ (no slack)
+    \item Seeds per contagion: 1 per contagion
+    \item Rescaled infectivity: Three values tested ($\lambda \in \{0.7, 1.0, 1.3\}$), $\lambda_{\Delta} = 2.0$
+    \item Time discount: Exponential decay with rate 0.01
+    \item Maximum simulation time: $T_{\text{max}} = 1000$ timesteps
+\end{itemize}
+
+\textbf{Simulation Protocol:}
+\begin{itemize}
+    \item 15 independent trials per $(p_{\text{rp}}, \lambda)$ configuration
+    \item Random seeding strategy
+    \item Metrics recorded: $A_g$, $A_g^{\text{td}}$, $D_g$, $P_g$
+\end{itemize}
+
+\subsection{Seeding Strategy Comparison Experiment}
+\label{app:seeding}
+
+\textbf{Objective:} Compare seeding strategies across topologies with varying combinations of community structure and hub prevalence.
+
+\textbf{Topologies Tested:}
+\begin{enumerate}
+    \item \textbf{RSC (Random Simplicial Complex):} Neither community structure nor hubs; $k_{\text{avg}} = 20$, $k_{\Delta,\text{avg}} = 6$
+    \item \textbf{PA (Preferential Attachment):} Hubs but no community structure; $m=5$, $m_{\Delta}=2$
+    \item \textbf{SBM 10 Communities:} Community structure but no hubs; $K=10$ equal communities, intra-community fraction: 0.8
+    \item \textbf{PSO Community:} Power-law degree distribution with community structure; Popularity-Similarity Optimization with $\gamma \approx 3$, 50 communities
+    \item \textbf{Twitter Collapsed/Mutual:} Empirical networks from Twitter data; $\sim$81,000 nodes, mutual-follows edge definition
+\end{enumerate}
+
+\textbf{Seeding Strategies:}
+\begin{enumerate}
+    \item \textbf{Random:} Uniform random selection of seed nodes
+    \item \textbf{High Degree:} Select highest-degree nodes (round-robin across contagions)participations
+    \item \textbf{Farthest-First:} Maximize separation between seed sets via BFS
+\end{enumerate}
+
+\textbf{CIC3 Parameters:}
+\begin{itemize}
+    \item Number of contagions: $C=10$ (synthetic), varies for Twitter
+    \item Quotas: Equal quotas summing to $N$ (no slack)
+    \item Infection rates: $\beta = 0.04$, $\beta_{\Delta} = 0.03$
+    \item Time discount: Exponential decay with rate 0.25
+    \item Maximum simulation time: $T_{\text{max}} = 200$ timesteps
+\end{itemize}
+
+\textbf{Simulation Protocol:}
+\begin{itemize}
+    \item 15 independent trials per (topology, strategy) pair
+    \item Metrics recorded: $A_g$, $A_g^{\text{td}}$, per-contagion $A_i^{\text{td}}$ distributions
+\end{itemize}
+
+\subsection{Lambda and Lambda Delta Sweep Experiment}
+\label{app:lambda}
+
+\textbf{Objective:} Characterize how pairwise and higher-order infectivity affect attainment, deadweight, and penetration.
+
+\textbf{Network Configuration:}
+\begin{itemize}
+    \item \textbf{Topologies:} RSC, BA, SBM (10 equal communities)
+    \item \textbf{Size:} $N=2000$ nodes
+    \item \textbf{Target statistics:} $k_{\text{avg}} \approx 20$, $k_{\Delta,\text{avg}} \approx 6$
+    \item \textbf{Topology seed:} 2025
+\end{itemize}
+
+\textbf{Sweep Design:}
+\begin{enumerate}
+    \item \textbf{Lambda sweep:} $\lambda \in [0.05, 3.0]$ (30 points), fixed $\lambda_{\Delta} \in \{0.5, 1.0, 3.0\}$
+    \item \textbf{Lambda-delta sweep:} $\lambda_{\Delta} \in [0.05, 5.0]$ (30 points), fixed $\lambda \in \{0.5, 1.0, 2.0\}$
+\end{enumerate}
+
+\textbf{CIC3 Parameters:}
+\begin{itemize}
+    \item Number of contagions: $C=10$
+    \item Quotas: Equal quotas of 200 nodes each (sum equals $N$)
+    \item Seeds per contagion: 1
+    \item Time discount: Exponential decay with rate 0.05
+    \item Maximum simulation time: $T_{\text{max}} = 1000$ timesteps
+\end{itemize}
+
+\textbf{Simulation Protocol:}
+\begin{itemize}
+    \item 15 independent trials per $(\lambda, \lambda_{\Delta}, \text{topology})$ configuration
+    \item Random seeding strategy
+    \item Metrics recorded: $A_g$, $A_g^{\text{td}}$, $D_g$, $P_g$
+\end{itemize}
+
+\subsection{Rich Club (Core-Periphery) Experiment}
+\label{app:richclub}
+
+\textbf{Objective:} Test the interaction between seeding strategies and rich club structure.
+
+\textbf{Network Configuration:}
+\begin{itemize}
+    \item \textbf{Model:} SBM with core-periphery structure
+    \item \textbf{Size:} $N=2000$ nodes
+    \item \textbf{Structure:} 1 core community (50 nodes) + 9 periphery communities (216 nodes each)
+    \item \textbf{Block probability matrix:}
+    \begin{itemize}
+        \item $p_{\text{CC}}$ (core-core): 0.8
+        \item $p_{\text{CP}}$ (core-periphery): variable
+        \item $p_{\text{PI}}$ (periphery-periphery inter): variable
+        \item $p_{\text{intra}}$ (periphery intra): 0.1
+    \end{itemize}
+\end{itemize}
+
+\textbf{Sweep Design:}
+\begin{itemize}
+    \item Grid resolution: $19 \times 19$
+    \item $p_{\text{CP}} \in [0.001, 0.1]$ (y-axis)
+    \item $p_{\text{PI}} \in [0.001, 0.1]$ (x-axis)
+    \item Fixed $p_{\text{CC}} = 0.1$
+\end{itemize}
+
+\textbf{Seeding Strategies:} Random, Farthest-First, High-Degree
+
+\textbf{CIC3 Parameters:}
+\begin{itemize}
+    \item Number of contagions: $C=10$
+    \item Infection rates: $\beta = 0.05$, $\beta_{\Delta} = 0.1$
+    \item Time discount: Exponential decay with rate 0.05
+    \item Maximum simulation time: $T_{\text{max}} = 2000$ timesteps
+\end{itemize}
+
+\textbf{Simulation Protocol:}
+\begin{itemize}
+    \item 15 independent trials per grid point
+    \item Metrics recorded: $A_g^{\text{td}}$, $D_g$, $P_g$
+    \item Analysis: Strategy differences computed as $\Delta A_g^{\text{td}} = A_g^{\text{td}}(\text{strategy}_1) - A_g^{\text{td}}(\text{strategy}_2)$
+\end{itemize}
+
+\subsection{Common Implementation Details}
+\label{app:common}
+
+\textbf{Simplicial Complex Generation:}
+All synthetic networks are generated using the \texttt{scm} Python package implementing:
+\begin{itemize}
+    \item RSC: Binomial sampling of edges and triangles
+    \item BA: Preferential attachment with simplicial extension
+    \item SBM: Block-structured edge and triangle sampling
+\end{itemize}
+
+\textbf{CIC3 Simulation:}
+\begin{itemize}
+    \item Synchronous update SI dynamics (no recovery)
+    \item Exclusive infection states (nodes can host at most one contagion)
+    \item Triangle reinforcement requires both other members infected by same contagion
+    \item Tie-breaking: Uniform random among successful infections
+\end{itemize}
+
+\textbf{Metric Computation:}
+\begin{itemize}
+    \item Attainment: Capped at quota, normalized by quota
+    \item Time discount: Applied to sorted infection times, $V(t) = e^{-\text{rate} \cdot t}$
+    \item Deadweight: Excess infections beyond quota
+    \item Penetration: Mean BFS distance from seeds to all infected nodes
+\end{itemize}
+
+\textbf{Statistical Aggregation:}
+\begin{itemize}
+    \item All reported means and standard deviations computed across independent trials
+    \item Error bars in figures represent $\pm 1$ standard deviation
+\end{itemize}
+
+\end{document}
